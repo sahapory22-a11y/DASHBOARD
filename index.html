@@ -1,0 +1,3191 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>SIMAKAD Pro - Dashboard Manajemen & Administrasi Sekolah</title>
+    
+    <!-- PWA Manifest Data URI (1-File PWA Requirement) -->
+    <link rel="manifest" href='data:application/manifest+json,{"name":"SIMAKAD Pro Dashboard Sekolah","short_name":"SIMAKAD","start_url":".","display":"standalone","background_color":"#07163B","theme_color":"#0A1E54","icons":[{"src":"https://cdn-icons-png.flaticon.com/512/2997/2997274.png","sizes":"512x512","type":"image/png"}]}'>
+    <meta name="theme-color" content="#07163B">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Plus Jakarta Sans & Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- FontAwesome 6 Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <!-- html2pdf.js CDN for Clean PDF Generation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+                    },
+                    colors: {
+                        navy: {
+                            950: '#050E26',
+                            900: '#07163B',
+                            800: '#0A1E54',
+                            700: '#102C75'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        /* Fullscreen Override untuk Blogger Widget tanpa edit XML */
+        #simakad-app-root {
+            position: fixed;
+            inset: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 999999;
+            background-color: #F1F5F9;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+        }
+
+        /* Custom Scrollbars */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(241, 245, 249, 0.6);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #CBD5E1;
+            border-radius: 9999px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94A3B8;
+        }
+
+        /* Glassmorphism & Card Utilities */
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.92);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+        }
+        .kpi-card {
+            position: relative;
+            overflow: hidden;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        .kpi-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 12px 24px -6px rgba(15, 23, 42, 0.18);
+        }
+
+        /* Responsive Navigation Rules */
+        @media (max-width: 1023px) {
+            .desktop-sidebar {
+                display: none !important;
+            }
+            .mobile-bottom-nav {
+                display: flex !important;
+            }
+            .main-workspace {
+                padding-bottom: 5.5rem !important;
+            }
+        }
+        @media (min-width: 1024px) {
+            .desktop-sidebar {
+                display: flex !important;
+            }
+            .mobile-bottom-nav {
+                display: none !important;
+            }
+        }
+
+        /* Print & PDF Specific Styling */
+        @media print {
+            body * {
+                visibility: hidden;
+            }
+            #pdf-print-area, #pdf-print-area * {
+                visibility: visible;
+            }
+            #pdf-print-area {
+                position: fixed;
+                left: 0;
+                top: 0;
+                width: 100%;
+                background: white !important;
+                box-shadow: none !important;
+                padding: 0 !important;
+                margin: 0 !important;
+            }
+        }
+
+        .pdf-table th, .pdf-table td {
+            border: 1px solid #1E293B;
+            padding: 6px 10px;
+        }
+    </style>
+</head>
+<body class="bg-slate-100 text-slate-800 antialiased selection:bg-violet-600 selection:text-white">
+
+<div id="simakad-app-root">
+    <!-- ==================== TOAST NOTIFICATION CONTAINER ==================== -->
+    <div id="toast-container" class="fixed top-4 right-4 z-[1000005] flex flex-col gap-2 max-w-sm w-full pointer-events-none px-4 sm:px-0"></div>
+
+    <!-- ==================== CUSTOM CONFIRMATION MODAL ==================== -->
+    <div id="confirm-modal" class="fixed inset-0 z-[1000004] bg-slate-950/60 backdrop-blur-sm hidden items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-100 transform transition-all">
+            <div class="flex items-center gap-3 mb-3">
+                <div class="w-11 h-11 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center text-lg shrink-0">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                </div>
+                <div>
+                    <h3 id="confirm-title" class="text-base font-bold text-slate-900">Konfirmasi Tindakan</h3>
+                    <p id="confirm-message" class="text-xs text-slate-500 mt-0.5">Apakah Anda yakin ingin melanjutkan proses ini?</p>
+                </div>
+            </div>
+            <div class="flex justify-end gap-2 mt-6">
+                <button id="confirm-cancel-btn" class="px-4 py-2 rounded-xl text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 transition">Batal</button>
+                <button id="confirm-ok-btn" class="px-4 py-2 rounded-xl text-xs font-semibold bg-rose-600 hover:bg-rose-700 text-white shadow-sm transition">Ya, Lanjutkan</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== 1. SPLIT-SCREEN LOGIN VIEW ==================== -->
+    <div id="login-view" class="w-full h-full overflow-y-auto bg-[#EEF2FF] flex items-center justify-center p-4 md:p-8">
+        <div class="bg-white w-full max-w-5xl rounded-3xl shadow-[0_25px_60px_-15px_rgba(109,40,217,0.18)] overflow-hidden grid grid-cols-1 lg:grid-cols-12 min-h-[580px] border border-white">
+            
+            <!-- Left Column: Login Form (45%) -->
+            <div class="lg:col-span-5 p-8 sm:p-11 flex flex-col justify-between bg-white relative z-10">
+                <div>
+                    <!-- System Brand Logo -->
+                    <div class="flex items-center gap-3 mb-8">
+                        <div class="w-9 h-9 rounded-full bg-gradient-to-tr from-violet-700 to-purple-500 flex items-center justify-center text-white shadow-md shadow-violet-200">
+                            <i class="fa-solid fa-graduation-cap text-sm"></i>
+                        </div>
+                        <span id="login-brand-name" class="font-bold text-slate-800 text-base tracking-tight">SIMAKAD Pro</span>
+                    </div>
+
+                    <h1 class="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight leading-tight">Welcome to login system</h1>
+                    <p id="login-school-subtitle" class="text-xs text-slate-400 mt-1.5 mb-6">Masuk menggunakan akun Admin Sekolah atau Username Guru Mata Pelajaran</p>
+
+                    <!-- Role Switcher Pill -->
+                    <div class="grid grid-cols-2 gap-1.5 p-1 bg-slate-100 rounded-full mb-6">
+                        <button type="button" id="tab-role-admin" onclick="window.app.setLoginRole('admin')" class="py-2 px-3 rounded-full text-xs font-bold transition-all bg-violet-600 text-white shadow-sm">
+                            <i class="fa-solid fa-user-shield mr-1.5"></i>Admin Sekolah
+                        </button>
+                        <button type="button" id="tab-role-guru" onclick="window.app.setLoginRole('guru')" class="py-2 px-3 rounded-full text-xs font-bold transition-all text-slate-600 hover:text-slate-900">
+                            <i class="fa-solid fa-chalkboard-user mr-1.5"></i>Guru Mapel
+                        </button>
+                    </div>
+
+                    <!-- Form Input -->
+                    <form id="login-form" onsubmit="window.app.handleLogin(event)" class="space-y-4">
+                        <div>
+                            <div class="relative flex items-center">
+                                <span class="absolute left-4 text-slate-400 text-sm">
+                                    <i id="login-user-icon" class="fa-regular fa-user"></i>
+                                </span>
+                                <input type="text" id="login-identifier" required placeholder="Email Admin atau Username" value="admin@sekolah.sch.id"
+                                    class="w-full pl-11 pr-4 py-3 bg-[#F4F5FA] hover:bg-slate-100 focus:bg-white rounded-full text-xs font-medium text-slate-800 placeholder-slate-400 border border-transparent focus:border-violet-500 focus:ring-2 focus:ring-violet-200 outline-none transition">
+                            </div>
+                        </div>
+
+                        <div>
+                            <div class="relative flex items-center">
+                                <span class="absolute left-4 text-slate-400 text-sm">
+                                    <i class="fa-solid fa-lock"></i>
+                                </span>
+                                <input type="password" id="login-password" required placeholder="Password" value="admin123"
+                                    class="w-full pl-11 pr-11 py-3 bg-[#F4F5FA] hover:bg-slate-100 focus:bg-white rounded-full text-xs font-medium text-slate-800 placeholder-slate-400 border border-transparent focus:border-violet-500 focus:ring-2 focus:ring-violet-200 outline-none transition">
+                                <button type="button" onclick="window.app.togglePasswordVisibility()" class="absolute right-4 text-slate-400 hover:text-slate-600 text-xs">
+                                    <i id="eye-icon" class="fa-regular fa-eye-slash"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center justify-between text-[11px] text-slate-400 pt-1">
+                            <label class="flex items-center gap-2 cursor-pointer select-none">
+                                <input type="checkbox" checked class="rounded text-violet-600 focus:ring-violet-500 border-slate-300">
+                                <span>Remember me</span>
+                            </label>
+                        </div>
+
+                        <div class="pt-2 flex items-center gap-4">
+                            <button type="submit" id="login-submit-btn" class="px-10 py-3 rounded-full bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 text-white font-bold text-xs shadow-lg shadow-violet-600/30 transition transform active:scale-95">
+                                Login
+                            </button>
+                            <span id="mode-indicator-badge" class="text-[11px] font-semibold px-3 py-1 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
+                                Mode Preview Aktif
+                            </span>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Right Column: Purple Organic Wave & 3D Isometric Laptop Illustration (55%) -->
+            <div class="lg:col-span-7 relative overflow-hidden bg-white flex items-center justify-center p-8 min-h-[320px]">
+                <!-- Organic Wave SVG Background matching Reference 2 -->
+                <svg class="absolute inset-0 w-full h-full object-cover" viewBox="0 0 700 600" fill="none" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
+                    <path d="M220 0C130 120 190 260 150 390C110 520 20 580 0 600H700V0H220Z" fill="#DDD6FE" fill-opacity="0.65"/>
+                    <path d="M260 0C165 130 225 270 185 400C145 530 55 585 25 600H700V0H260Z" fill="url(#purpleWaveGrad)"/>
+                    <defs>
+                        <linearGradient id="purpleWaveGrad" x1="150" y1="0" x2="700" y2="600" gradientUnits="userSpaceOnUse">
+                            <stop offset="0%" stop-color="#7C3AED"/>
+                            <stop offset="100%" stop-color="#5B21B6"/>
+                        </linearGradient>
+                    </defs>
+                </svg>
+
+                <!-- 3D Isometric Layered Laptop & School Analytics Illustration -->
+                <div class="relative z-10 w-full max-w-md transform hover:scale-105 transition duration-500">
+                    <svg viewBox="0 0 500 380" class="w-full h-auto drop-shadow-2xl">
+                        <!-- Shadow Layers -->
+                        <polygon points="90,260 290,175 450,245 250,335" fill="rgba(255,255,255,0.12)"/>
+                        <polygon points="90,235 290,150 450,220 250,310" fill="rgba(255,255,255,0.22)"/>
+                        <!-- Laptop Base Keyboard Layer -->
+                        <polygon points="80,205 285,120 455,195 250,285" fill="#E0E7FF" stroke="#C7D2FE" stroke-width="3"/>
+                        <polygon points="120,198 280,132 395,182 235,250" fill="#6366F1" opacity="0.45"/>
+                        <!-- Colorful Floating UI Layers -->
+                        <polygon points="95,188 295,105 445,170 245,255" fill="#F472B6" opacity="0.75"/>
+                        <polygon points="105,172 305,90 440,150 240,235" fill="#FBBF24" opacity="0.8"/>
+                        <!-- Top White Glossy Lid -->
+                        <polygon points="75,165 290,72 455,142 240,238" fill="url(#lidGrad)" stroke="#FFFFFF" stroke-width="2"/>
+                        <!-- Center Emblem on Lid -->
+                        <ellipse cx="268" cy="154" rx="22" ry="14" transform="rotate(-22 268 154)" fill="#FFFFFF"/>
+                        <defs>
+                            <linearGradient id="lidGrad" x1="75" y1="72" x2="455" y2="238" gradientUnits="userSpaceOnUse">
+                                <stop offset="0%" stop-color="#FFFFFF"/>
+                                <stop offset="100%" stop-color="#F3E8FF"/>
+                            </linearGradient>
+                        </defs>
+                    </svg>
+                    <div class="text-right text-white/90 mt-2 pr-4">
+                        <p class="text-xs font-bold tracking-wide uppercase">Integrated Academic Cloud</p>
+                        <p class="text-[11px] text-purple-200">Sinkronisasi Real-Time Admin, Guru, Absensi & Rapor PDF</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== 2. MAIN DASHBOARD SHELL (TOPBAR + SIDEBAR + WORKSPACE) ==================== -->
+    <div id="dashboard-shell" class="hidden w-full h-full flex-col overflow-hidden">
+        
+        <!-- TOP HEADER BAR (Dark Navy #050E26 matching Reference 1) -->
+        <header class="h-16 bg-navy-950 text-white px-4 lg:px-6 flex items-center justify-between shrink-0 border-b border-slate-800/80 shadow-md z-30">
+            <!-- Left: Brand & School Identity -->
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-navy-950 font-extrabold shadow-sm shrink-0">
+                    <i class="fa-solid fa-building-columns text-lg"></i>
+                </div>
+                <div class="leading-tight">
+                    <div class="flex items-center gap-2">
+                        <h1 id="header-app-name" class="font-extrabold text-sm sm:text-base tracking-tight text-white">SIMAKAD Sekolah</h1>
+                        <span id="header-role-badge" class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-600 text-white uppercase">ADMIN</span>
+                    </div>
+                    <p id="header-school-name" class="text-[11px] text-amber-400/90 font-medium truncate max-w-[180px] sm:max-w-xs">SMP Negeri Terpadu</p>
+                </div>
+            </div>
+
+            <!-- Center: Global Pill Search Bar -->
+            <div class="hidden md:flex items-center flex-1 max-w-md mx-6">
+                <div class="relative w-full">
+                    <input type="text" id="global-search-input" oninput="window.app.handleGlobalSearch(this.value)" placeholder="Cari nama guru, NIP, mapel, siswa, atau materi jurnal..."
+                        class="w-full py-2 pl-4 pr-10 rounded-full bg-white text-slate-800 placeholder-slate-400 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-inner">
+                    <span class="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-500 text-xs">
+                        <i class="fa-solid fa-magnifying-glass"></i>
+                    </span>
+                </div>
+            </div>
+
+            <!-- Right: Date Pill, Notifications, Settings Shortcut & User Profile -->
+            <div class="flex items-center gap-2.5 sm:gap-4">
+                <div class="hidden sm:flex items-center gap-2 bg-white text-slate-800 px-3.5 py-1.5 rounded-full text-xs font-bold shadow-sm">
+                    <i class="fa-regular fa-calendar-days text-blue-600"></i>
+                    <span id="header-current-date">11 Jul 2026</span>
+                </div>
+
+                <button type="button" onclick="window.app.navigate('laporan')" title="Cetak Laporan PDF" class="relative w-9 h-9 rounded-full bg-navy-800 hover:bg-blue-600 text-slate-200 flex items-center justify-center transition">
+                    <i class="fa-solid fa-print text-xs"></i>
+                    <span class="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-rose-500 text-white text-[9px] font-bold flex items-center justify-center">PDF</span>
+                </button>
+
+                <button type="button" id="header-settings-btn" onclick="window.app.navigate('pengaturan')" title="Pengaturan Aplikasi" class="w-9 h-9 rounded-full bg-navy-800 hover:bg-blue-600 text-slate-200 flex items-center justify-center transition">
+                    <i class="fa-solid fa-gear text-xs"></i>
+                </button>
+
+                <!-- Active User Profile -->
+                <div class="flex items-center gap-2.5 pl-2 border-l border-slate-800">
+                    <div class="w-9 h-9 rounded-full bg-gradient-to-tr from-blue-500 to-indigo-600 text-white font-bold text-xs flex items-center justify-center border-2 border-slate-700">
+                        <span id="header-user-initials">AD</span>
+                    </div>
+                    <div class="hidden xl:block leading-tight">
+                        <p id="header-user-name" class="text-xs font-bold text-white truncate max-w-[140px]">Administrator</p>
+                        <p id="header-user-sub" class="text-[10px] text-emerald-400 font-semibold">Semua Mata Pelajaran</p>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- BODY CONTAINER (SIDEBAR + MAIN CONTENT) -->
+        <div class="flex-1 flex overflow-hidden">
+            
+            <!-- LEFT FIXED SIDEBAR (Desktop #0A1E54 matching Reference 1) -->
+            <aside class="desktop-sidebar w-60 bg-navy-800 text-slate-200 flex-col justify-between shrink-0 select-none border-r border-navy-950 overflow-y-auto">
+                <div class="p-3 space-y-1" id="desktop-nav-list">
+                    <!-- Dynamically populated based on Role (Admin vs Guru) -->
+                </div>
+
+                <!-- Bottom Live School Status Box -->
+                <div class="p-3 m-3 rounded-xl bg-navy-950/90 border border-slate-800/80 shadow-inner">
+                    <div class="flex items-center gap-2 text-amber-400 font-bold text-xs mb-2">
+                        <i class="fa-solid fa-signal"></i>
+                        <span>Status Akademik Live</span>
+                    </div>
+                    <div class="space-y-1.5 text-[11px]">
+                        <div class="flex justify-between items-center">
+                            <span class="text-slate-400">Total Siswa Aktif</span>
+                            <span id="sidebar-stat-students" class="font-bold text-emerald-400">0 Siswa</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-slate-400">Total Kelas</span>
+                            <span id="sidebar-stat-classes" class="font-bold text-sky-400">0 Rombel</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-slate-400">Jurnal Terisi</span>
+                            <span id="sidebar-stat-journals" class="font-bold text-amber-400">0 Entri</span>
+                        </div>
+                    </div>
+                    <div class="mt-2.5 pt-2 border-t border-slate-800/80 flex items-center justify-between text-[10px] text-slate-400">
+                        <span id="sidebar-db-mode">Mode: Hybrid Cloud</span>
+                        <button onclick="window.app.logout()" class="text-rose-400 hover:text-rose-300 font-bold"><i class="fa-solid fa-power-off mr-1"></i>Keluar</button>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- MAIN WORKSPACE AREA -->
+            <main class="main-workspace flex-1 overflow-y-auto p-4 lg:p-5 space-y-4">
+                
+                <!-- GLOBAL INTERACTIVE FILTER BAR (Available on ALL menus) -->
+                <div id="global-filter-bar" class="bg-white rounded-2xl p-3.5 shadow-sm border border-slate-200/80 flex flex-wrap items-center justify-between gap-3">
+                    <div class="flex items-center gap-2.5">
+                        <div class="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold">
+                            <i id="active-menu-icon" class="fa-solid fa-house"></i>
+                        </div>
+                        <div>
+                            <h2 id="active-menu-title" class="text-sm sm:text-base font-extrabold text-slate-900">Dashboard Interaktif</h2>
+                            <p id="active-menu-subtitle" class="text-[11px] text-slate-500">Ringkasan data akademik terintegrasi secara real-time</p>
+                        </div>
+                    </div>
+
+                    <!-- Filter Controls (Filter Guru, Mapel, Kelas) -->
+                    <div class="flex flex-wrap items-center gap-2">
+                        <div class="flex items-center bg-slate-100 rounded-xl px-3 py-1.5 border border-slate-200/60">
+                            <i class="fa-solid fa-book-open text-indigo-600 text-xs mr-2"></i>
+                            <span class="text-[11px] font-semibold text-slate-500 mr-1.5">Mapel:</span>
+                            <select id="filter-subject" onchange="window.app.applyGlobalFilters('subject', this.value)" class="bg-transparent text-xs font-bold text-slate-800 focus:outline-none cursor-pointer">
+                                <option value="ALL">Semua Mata Pelajaran</option>
+                            </select>
+                        </div>
+
+                        <div class="flex items-center bg-slate-100 rounded-xl px-3 py-1.5 border border-slate-200/60">
+                            <i class="fa-solid fa-chalkboard-user text-emerald-600 text-xs mr-2"></i>
+                            <span class="text-[11px] font-semibold text-slate-500 mr-1.5">Guru:</span>
+                            <select id="filter-teacher" onchange="window.app.applyGlobalFilters('teacher', this.value)" class="bg-transparent text-xs font-bold text-slate-800 focus:outline-none cursor-pointer">
+                                <option value="ALL">Semua Guru Pengampu</option>
+                            </select>
+                        </div>
+
+                        <div class="flex items-center bg-slate-100 rounded-xl px-3 py-1.5 border border-slate-200/60">
+                            <i class="fa-solid fa-door-open text-amber-600 text-xs mr-2"></i>
+                            <span class="text-[11px] font-semibold text-slate-500 mr-1.5">Kelas:</span>
+                            <select id="filter-class" onchange="window.app.applyGlobalFilters('class', this.value)" class="bg-transparent text-xs font-bold text-slate-800 focus:outline-none cursor-pointer">
+                                <option value="ALL">Semua Kelas</option>
+                            </select>
+                        </div>
+
+                        <button type="button" onclick="window.app.resetGlobalFilters()" class="px-3 py-1.5 rounded-xl bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-bold transition" title="Reset Filter">
+                            <i class="fa-solid fa-rotate-left mr-1"></i>Reset
+                        </button>
+                    </div>
+                </div>
+
+                <!-- DYNAMIC MENU CONTENT CONTAINER -->
+                <div id="menu-content-area" class="space-y-4"></div>
+
+            </main>
+        </div>
+
+        <!-- MOBILE FLOATING BOTTOM NAVIGATION BAR -->
+        <nav id="mobile-bottom-nav" class="mobile-bottom-nav fixed bottom-0 left-0 right-0 bg-navy-950/95 backdrop-blur-md text-slate-300 border-t border-slate-800 px-2 py-1.5 justify-around items-center z-40 shadow-2xl overflow-x-auto">
+            <!-- Dynamically populated -->
+        </nav>
+    </div>
+</div>
+
+<!-- ==================== APPLICATION LOGIC & SUPABASE INTEGRATION ==================== -->
+<script>
+    // ============================================================================
+    // KONFIGURASI APLIKASI & SUPABASE
+    // ============================================================================
+    const IS_PREVIEW = false; // Set false JIKA SUDAH TERHUBUNG KE SUPABASE
+    // PASTE SUPABASE URL & ANON KEY ANDA DI SINI
+    const SUPABASE_URL = "https://swkoejetydubcnmddsbx.supabase.co";
+    const SUPABASE_ANON_KEY = "sb_publishable_81JbhQCX-x-5sVisxQb5SA_Ww08y198";
+
+    let supabase = null;
+
+    async function initSupabaseClient() {
+        const badge = document.getElementById('mode-indicator-badge');
+        if (!IS_PREVIEW && SUPABASE_URL && SUPABASE_URL !== "URL_SUPABASE_ANDA" && SUPABASE_ANON_KEY !== "ANON_KEY_ANDA") {
+            try {
+                const { createClient } = await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm');
+                supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+                if (badge) {
+                    badge.textContent = 'Supabase Cloud Aktif';
+                    badge.className = 'text-[11px] font-semibold px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200';
+                }
+            } catch (err) {
+                console.warn('Gagal memuat Supabase SDK:', err);
+            }
+        }
+    }
+
+    function registerDynamicPWA() {
+        if ('serviceWorker' in navigator) {
+            try {
+                const swCode = `
+                    self.addEventListener('install', (e) => self.skipWaiting());
+                    self.addEventListener('activate', (e) => e.waitUntil(self.clients.claim()));
+                    self.addEventListener('fetch', () => {});
+                `;
+                const blob = new Blob([swCode], { type: 'application/javascript' });
+                const swUrl = URL.createObjectURL(blob);
+                navigator.serviceWorker.register(swUrl).catch(() => {});
+            } catch (e) {}
+        }
+    }
+
+    // ============================================================================
+    // STATE APLIKASI & DATA AWAL BERSIH (SIAP DEPLOY TANPA DATA DUMMY)
+    // ============================================================================
+    const INITIAL_DUMMY_DATA = {
+        app_settings: {
+            id: 'set-1',
+            app_name: 'SIMAKAD Pro Terpadu',
+            school_name: 'SMP Negeri 9 Buru',
+            agency_name: 'PEMERINTAH KABUPATEN BURU - DINAS PENDIDIKAN DAN KEBUDAYAAN',
+            kop_address: 'Jl. Pendidikan No. 45, Namlea, Kabupaten Buru, Provinsi Maluku - Kode Pos 97571 | Email: smpn9buru@sch.id',
+            principal_name: 'Drs. H. Ahmad Fauzi, M.Pd.',
+            principal_nip: '19700514 199603 1 004',
+            region_logo_url: 'https://cdn-icons-png.flaticon.com/512/921/921490.png',
+            school_logo_url: 'https://cdn-icons-png.flaticon.com/512/2997/2997274.png'
+        },
+        subjects: [],
+        classes: [],
+        teachers: [],
+        students: [],
+        schedules: [],
+        journals: [],
+        attendances: [],
+        grades: []
+    };
+
+    const state = {
+        loginRoleTab: 'admin',
+        currentUser: null,
+        activeMenu: 'dashboard',
+        searchQuery: '',
+        filters: {
+            subjectId: 'ALL',
+            teacherId: 'ALL',
+            classId: 'ALL',
+            reportType: 'jurnal'
+        },
+        gradeConfig: {
+            viewMode: 'all',
+            tpCount: 6,
+            tugasCount: 5,
+            uhCount: 5,
+            drafts: {}
+        },
+        db: JSON.parse(JSON.stringify(INITIAL_DUMMY_DATA)),
+        charts: {}
+    };
+
+    // ============================================================================
+    // UTILITY & HELPER FUNCTIONS
+    // ============================================================================
+    function showToast(message, type = 'success') {
+        const container = document.getElementById('toast-container');
+        if (!container) return;
+        const toast = document.createElement('div');
+        const bgColors = type === 'success' ? 'bg-emerald-600 text-white' : (type === 'error' ? 'bg-rose-600 text-white' : 'bg-blue-600 text-white');
+        toast.className = `${bgColors} px-4 py-3 rounded-2xl text-xs font-bold shadow-xl pointer-events-auto flex items-center justify-between gap-3 transform translate-y-2 opacity-0 transition-all duration-300`;
+        toast.innerHTML = `<span>${message}</span><button onclick="this.parentElement.remove()" class="text-white/80 hover:text-white font-bold">&times;</button>`;
+        container.appendChild(toast);
+        setTimeout(() => toast.classList.remove('translate-y-2', 'opacity-0'), 10);
+        setTimeout(() => {
+            toast.classList.add('opacity-0', 'translate-y-2');
+            setTimeout(() => toast.remove(), 300);
+        }, 4000);
+    }
+
+    function showConfirmModal(title, message, onConfirmed) {
+        const modal = document.getElementById('confirm-modal');
+        const tEl = document.getElementById('confirm-title');
+        const mEl = document.getElementById('confirm-message');
+        const okBtn = document.getElementById('confirm-ok-btn');
+        const cancelBtn = document.getElementById('confirm-cancel-btn');
+        if (!modal) return;
+
+        tEl.textContent = title;
+        mEl.textContent = message;
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+
+        const handleOk = () => {
+            cleanup();
+            onConfirmed();
+        };
+        const handleCancel = () => {
+            cleanup();
+        };
+        const cleanup = () => {
+            modal.classList.remove('flex');
+            modal.classList.add('hidden');
+            okBtn.removeEventListener('click', handleOk);
+            cancelBtn.removeEventListener('click', handleCancel);
+        };
+
+        okBtn.addEventListener('click', handleOk);
+        cancelBtn.addEventListener('click', handleCancel);
+    }
+
+    function getClassName(classId) {
+        return state.db.classes.find(c => String(c.id) === String(classId))?.class_name || 'Kelas Umum';
+    }
+
+    function getSubjectName(subjectId) {
+        return state.db.subjects.find(s => String(s.id) === String(subjectId))?.subject_name || 'Mata Pelajaran';
+    }
+
+    function getTeacherSubjectIds(teacher) {
+        if (!teacher) return [];
+        if (Array.isArray(teacher.assigned_subjects) && teacher.assigned_subjects.length > 0) {
+            return teacher.assigned_subjects.map(String);
+        }
+        if (teacher.subject_id) {
+            return [String(teacher.subject_id)];
+        }
+        return [];
+    }
+
+    function getTeacherSubjectsText(teacher) {
+        const subIds = getTeacherSubjectIds(teacher);
+        if (subIds.length === 0) return 'Belum Diatur';
+        return subIds.map(id => getSubjectName(id)).join(', ');
+    }
+
+    function getTeacherName(teacherId) {
+        return state.db.teachers.find(t => String(t.id) === String(teacherId))?.full_name || 'Guru Pengampu';
+    }
+
+    function getStudentName(studentId) {
+        return state.db.students.find(s => String(s.id) === String(studentId))?.student_name || 'Siswa';
+    }
+
+    function getStudentNisn(studentId) {
+        return state.db.students.find(s => String(s.id) === String(studentId))?.nisn || '000000';
+    }
+
+    function getJenjangBadge(gradeLevel = '') {
+        const g = String(gradeLevel).toUpperCase();
+        return {
+            jenjang: 'SMP',
+            levelText: g.replace('SMP', '').trim() || 'VII',
+            color: 'bg-emerald-100 text-emerald-700 border-emerald-200'
+        };
+    }
+
+    function getCurrentTeacherRecord() {
+        if (!state.currentUser || state.currentUser.role !== 'guru') return null;
+        return state.db.teachers.find(t => String(t.id) === String(state.currentUser.id)) || state.currentUser;
+    }
+
+    function getAverage(arr = []) {
+        const valid = (arr || []).map(v => parseFloat(v)).filter(v => !isNaN(v) && v > 0);
+        if (valid.length === 0) return 0;
+        const sum = valid.reduce((acc, cur) => acc + cur, 0);
+        return parseFloat((sum / valid.length).toFixed(1));
+    }
+
+    function calculatePredicate(score) {
+        const n = parseFloat(score) || 0;
+        if (n <= 0) return '-';
+        if (n >= 90) return 'A';
+        if (n >= 80) return 'B';
+        if (n >= 75) return 'C';
+        return 'D';
+    }
+
+    // ============================================================================
+    // DATABASE INITIALIZATION & AUTO SETUP
+    // ============================================================================
+    async function autoSetupDatabase() {
+        if (!IS_PREVIEW && supabase) {
+            try {
+                const { data: existingSettings } = await supabase.from('app_settings').select('*').limit(1);
+                if (!existingSettings || existingSettings.length === 0) {
+                    await supabase.from('app_settings').upsert([INITIAL_DUMMY_DATA.app_settings]);
+                } else {
+                    state.db.app_settings = existingSettings[0];
+                }
+
+                const tables = ['subjects', 'classes', 'teachers', 'students', 'schedules', 'journals', 'attendances', 'grades'];
+                for (const t of tables) {
+                    const { data } = await supabase.from(t).select('*');
+                    if (data) state.db[t] = data;
+                }
+            } catch (e) {
+                console.warn('Sinkronisasi tabel Supabase:', e);
+            }
+        }
+    }
+
+    // ============================================================================
+    // AUTHENTICATION & HYBRID LOGIN
+    // ============================================================================
+    function setLoginRole(role) {
+        state.loginRoleTab = role;
+        const adminBtn = document.getElementById('tab-role-admin');
+        const guruBtn = document.getElementById('tab-role-guru');
+        const idInput = document.getElementById('login-identifier');
+        const passInput = document.getElementById('login-password');
+
+        if (role === 'admin') {
+            adminBtn.className = 'py-2 px-3 rounded-full text-xs font-bold transition-all bg-violet-600 text-white shadow-sm';
+            guruBtn.className = 'py-2 px-3 rounded-full text-xs font-bold transition-all text-slate-600 hover:text-slate-900';
+            idInput.placeholder = 'Email Admin atau Username';
+        } else {
+            guruBtn.className = 'py-2 px-3 rounded-full text-xs font-bold transition-all bg-violet-600 text-white shadow-sm';
+            adminBtn.className = 'py-2 px-3 rounded-full text-xs font-bold transition-all text-slate-600 hover:text-slate-900';
+            idInput.placeholder = 'Username Guru Mata Pelajaran';
+        }
+        idInput.value = '';
+        passInput.value = '';
+    }
+
+    function togglePasswordVisibility() {
+        const input = document.getElementById('login-password');
+        const icon = document.getElementById('eye-icon');
+        if (input.type === 'password') {
+            input.type = 'text';
+            icon.className = 'fa-regular fa-eye';
+        } else {
+            input.type = 'password';
+            icon.className = 'fa-regular fa-eye-slash';
+        }
+    }
+
+    async function handleLogin(event) {
+        if (event) event.preventDefault();
+        const identifier = document.getElementById('login-identifier').value.trim();
+        const password = document.getElementById('login-password').value.trim();
+
+        if (!identifier || !password) {
+            showToast('Masukkan username/email dan password terlebih dahulu!', 'error');
+            return;
+        }
+
+        if (state.loginRoleTab === 'admin') {
+            if (!IS_PREVIEW && supabase) {
+                const { data, error } = await supabase.auth.signInWithPassword({ email: identifier, password });
+                if (error) {
+                    showToast('Login Admin gagal: ' + error.message, 'error');
+                    return;
+                }
+                state.currentUser = { role: 'admin', id: data.user.id, full_name: 'Administrator Sekolah', email: identifier };
+            } else {
+                if ((identifier.toLowerCase() === 'admin@sekolah.sch.id' || identifier.toLowerCase() === 'admin') && password === 'admin123') {
+                    state.currentUser = { role: 'admin', id: 'admin-1', full_name: 'Administrator Sekolah', email: identifier };
+                } else {
+                    showToast('Kredensial Admin tidak valid!', 'error');
+                    return;
+                }
+            }
+            state.filters.teacherId = 'ALL';
+            state.filters.subjectId = 'ALL';
+            state.filters.classId = 'ALL';
+        } else {
+            const matchedGuru = state.db.teachers.find(
+                t => t.username.toLowerCase() === identifier.toLowerCase() && t.password === password
+            );
+            if (!matchedGuru) {
+                showToast('Username atau Password Guru tidak ditemukan!', 'error');
+                return;
+            }
+            const guruSubjects = getTeacherSubjectIds(matchedGuru);
+            state.currentUser = {
+                role: 'guru',
+                id: matchedGuru.id,
+                full_name: matchedGuru.full_name,
+                nip: matchedGuru.nip,
+                username: matchedGuru.username,
+                subject_id: guruSubjects[0] || matchedGuru.subject_id || 'ALL',
+                assigned_subjects: guruSubjects,
+                subject_name: getTeacherSubjectsText(matchedGuru),
+                assigned_classes: matchedGuru.assigned_classes || []
+            };
+            state.filters.teacherId = matchedGuru.id;
+            state.filters.subjectId = guruSubjects.length === 1 ? guruSubjects[0] : 'ALL';
+            state.filters.classId = 'ALL';
+        }
+
+        document.getElementById('login-view').classList.add('hidden');
+        const shell = document.getElementById('dashboard-shell');
+        shell.classList.remove('hidden');
+        shell.classList.add('flex');
+
+        state.activeMenu = 'dashboard';
+        syncAllUI();
+        showToast(`Selamat datang, ${state.currentUser.full_name}!`);
+    }
+
+    function quickLogin(role, username, password) {
+        setLoginRole(role);
+        document.getElementById('login-identifier').value = username;
+        document.getElementById('login-password').value = password;
+        handleLogin();
+    }
+
+    function logout() {
+        state.currentUser = null;
+        document.getElementById('dashboard-shell').classList.add('hidden');
+        document.getElementById('dashboard-shell').classList.remove('flex');
+        document.getElementById('login-view').classList.remove('hidden');
+        showToast('Anda telah keluar dari sesi aplikasi.');
+    }
+
+    // ============================================================================
+    // NAVIGATION, HEADER & GLOBAL FILTER BAR
+    // ============================================================================
+    const MENU_DEFINITIONS = [
+        { id: 'dashboard', label: 'Dashboard', icon: 'fa-solid fa-house', roles: ['admin', 'guru'], subtitle: 'Ringkasan metrik akademik, jumlah siswa, dan aktivitas terkini' },
+        { id: 'guru', label: 'Input Data Guru', icon: 'fa-solid fa-chalkboard-user', roles: ['admin'], subtitle: 'Kelola data pengajar, NIP, multi-mapel, dan kelas binaan' },
+        { id: 'kelas', label: 'Input Data Kelas', icon: 'fa-solid fa-school', roles: ['admin'], subtitle: 'Kelola rombel kelas jenjang SMP beserta daftar siswa satuan/massal' },
+        { id: 'mapel', label: 'Input Mata Pelajaran', icon: 'fa-solid fa-book-bookmark', roles: ['admin'], subtitle: 'Kelola daftar mata pelajaran kurikulum dan standar KKM' },
+        { id: 'jurnal', label: 'Jurnal Mengajar', icon: 'fa-solid fa-book-open-reader', roles: ['admin', 'guru'], subtitle: 'Catatan harian mengajar guru, materi pokok, dan kehadiran' },
+        { id: 'jadwal', label: 'Jadwal Mengajar', icon: 'fa-solid fa-calendar-check', roles: ['admin', 'guru'], subtitle: 'Jadwal tatap muka mingguan per kelas dan mata pelajaran' },
+        { id: 'absensi', label: 'Absensi Siswa', icon: 'fa-solid fa-user-check', roles: ['admin', 'guru'], subtitle: 'Input dan rekapitulasi kehadiran siswa per mata pelajaran' },
+        { id: 'penilaian', label: 'Penilaian Siswa', icon: 'fa-solid fa-star-half-stroke', roles: ['admin', 'guru'], subtitle: 'Tabel matriks nilai Tugas 1-N, UH 1-N, dan Tujuan Pembelajaran (TP)' },
+        { id: 'laporan', label: 'Laporan & Cetak PDF', icon: 'fa-solid fa-file-pdf', roles: ['admin', 'guru'], subtitle: 'Pratinjau dan unduh laporan resmi ber-Kop Sekolah' },
+        { id: 'pengaturan', label: 'Pengaturan Aplikasi', icon: 'fa-solid fa-sliders', roles: ['admin'], subtitle: 'Konfigurasi identitas sekolah, kepala sekolah, dan logo Kop PDF' }
+    ];
+
+    function updateShellIdentity() {
+        const s = state.db.app_settings;
+        document.getElementById('login-brand-name').textContent = s.app_name;
+        document.getElementById('login-school-subtitle').textContent = `${s.school_name} — Sistem Administrasi & Akademik Terpadu`;
+        document.getElementById('header-app-name').textContent = s.app_name;
+        document.getElementById('header-school-name').textContent = s.school_name;
+
+        const now = new Date();
+        document.getElementById('header-current-date').textContent = now.toLocaleDateString('id-ID', {
+            day: '2-digit', month: 'short', year: 'numeric'
+        });
+
+        if (state.currentUser) {
+            const isGuru = state.currentUser.role === 'guru';
+            const teacherRec = getCurrentTeacherRecord();
+            document.getElementById('header-role-badge').textContent = isGuru ? 'GURU MAPEL' : 'ADMIN';
+            document.getElementById('header-role-badge').className = isGuru
+                ? 'text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-600 text-white uppercase'
+                : 'text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-600 text-white uppercase';
+
+            document.getElementById('header-user-name').textContent = state.currentUser.full_name;
+            document.getElementById('header-user-sub').textContent = isGuru
+                ? `Mapel: ${getTeacherSubjectsText(teacherRec)}`
+                : 'Akses Penuh Seluruh Data';
+
+            const initials = state.currentUser.full_name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+            document.getElementById('header-user-initials').textContent = initials || 'US';
+
+            const settingsBtn = document.getElementById('header-settings-btn');
+            if (settingsBtn) settingsBtn.style.display = isGuru ? 'none' : 'flex';
+
+            const allowedClassIds = isGuru ? (teacherRec?.assigned_classes || []) : state.db.classes.map(c => c.id);
+            const scopedStudentsCount = isGuru
+                ? state.db.students.filter(st => allowedClassIds.includes(st.class_id)).length
+                : state.db.students.length;
+            const scopedClassesCount = isGuru ? allowedClassIds.length : state.db.classes.length;
+            const scopedJournalsCount = isGuru
+                ? state.db.journals.filter(j => String(j.teacher_id) === String(state.currentUser.id)).length
+                : state.db.journals.length;
+
+            document.getElementById('sidebar-stat-students').textContent = `${scopedStudentsCount} Siswa`;
+            document.getElementById('sidebar-stat-classes').textContent = `${scopedClassesCount} Rombel`;
+            document.getElementById('sidebar-stat-journals').textContent = `${scopedJournalsCount} Entri`;
+        }
+    }
+
+    function renderNavigation() {
+        if (!state.currentUser) return;
+        const role = state.currentUser.role;
+        const allowedMenus = MENU_DEFINITIONS.filter(m => m.roles.includes(role));
+
+        const desktopList = document.getElementById('desktop-nav-list');
+        desktopList.innerHTML = allowedMenus.map(m => {
+            const active = state.activeMenu === m.id;
+            return `
+                <button type="button" onclick="window.app.navigate('${m.id}')"
+                    class="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all ${
+                        active
+                            ? 'bg-blue-600 text-white shadow-md shadow-blue-950/50'
+                            : 'text-slate-300 hover:bg-navy-700/70 hover:text-white'
+                    }">
+                    <span class="flex items-center gap-3">
+                        <i class="${m.icon} w-4 text-center"></i>
+                        <span>${m.label}</span>
+                    </span>
+                    <i class="fa-solid fa-chevron-right text-[9px] opacity-60"></i>
+                </button>
+            `;
+        }).join('');
+
+        const mobileNav = document.getElementById('mobile-bottom-nav');
+        mobileNav.innerHTML = allowedMenus.map(m => {
+            const active = state.activeMenu === m.id;
+            return `
+                <button type="button" onclick="window.app.navigate('${m.id}')"
+                    class="flex flex-col items-center justify-center px-2.5 py-1 rounded-xl text-[10px] font-bold shrink-0 transition ${
+                        active ? 'text-blue-400 bg-navy-800' : 'text-slate-400 hover:text-white'
+                    }">
+                    <i class="${m.icon} text-xs mb-0.5"></i>
+                    <span class="truncate max-w-[64px]">${m.label.replace('Input ', '')}</span>
+                </button>
+            `;
+        }).join('') + `
+            <button type="button" onclick="window.app.logout()" class="flex flex-col items-center justify-center px-2.5 py-1 rounded-xl text-[10px] font-bold text-rose-400 shrink-0">
+                <i class="fa-solid fa-power-off text-xs mb-0.5"></i>
+                <span>Keluar</span>
+            </button>
+        `;
+    }
+
+    function navigate(menuId) {
+        state.activeMenu = menuId;
+        const def = MENU_DEFINITIONS.find(m => m.id === menuId) || MENU_DEFINITIONS[0];
+        document.getElementById('active-menu-icon').className = def.icon;
+        document.getElementById('active-menu-title').textContent = def.label;
+        document.getElementById('active-menu-subtitle').textContent = def.subtitle;
+        renderNavigation();
+        populateFilterDropdowns();
+        renderActiveMenu();
+    }
+
+    function populateFilterDropdowns() {
+        const subSelect = document.getElementById('filter-subject');
+        const teachSelect = document.getElementById('filter-teacher');
+        const clsSelect = document.getElementById('filter-class');
+        if (!subSelect || !teachSelect || !clsSelect) return;
+
+        const isGuru = state.currentUser && state.currentUser.role === 'guru';
+        const teacherRec = getCurrentTeacherRecord();
+
+        if (isGuru && teacherRec) {
+            const guruSubIds = getTeacherSubjectIds(teacherRec);
+            const guruSubs = state.db.subjects.filter(s => guruSubIds.includes(String(s.id)));
+            subSelect.innerHTML = (guruSubs.length > 1 ? `<option value="ALL">Semua Mapel Saya (${guruSubs.length})</option>` : '') +
+                guruSubs.map(s => `<option value="${s.id}" ${String(state.filters.subjectId) === String(s.id) ? 'selected' : ''}>${s.subject_name}</option>`).join('');
+            subSelect.disabled = guruSubs.length <= 1;
+
+            teachSelect.innerHTML = `<option value="${teacherRec.id}" selected>${teacherRec.full_name}</option>`;
+            teachSelect.disabled = true;
+
+            const allowedClasses = state.db.classes.filter(c => (teacherRec.assigned_classes || []).includes(c.id));
+            clsSelect.innerHTML = `<option value="ALL">Semua Kelas Saya (${allowedClasses.length})</option>` +
+                allowedClasses.map(c => `<option value="${c.id}" ${String(state.filters.classId) === String(c.id) ? 'selected' : ''}>${c.class_name}</option>`).join('');
+        } else {
+            subSelect.disabled = false;
+            teachSelect.disabled = false;
+
+            subSelect.innerHTML = `<option value="ALL">Semua Mata Pelajaran</option>` +
+                state.db.subjects.map(s => `<option value="${s.id}" ${String(state.filters.subjectId) === String(s.id) ? 'selected' : ''}>${s.subject_name}</option>`).join('');
+
+            teachSelect.innerHTML = `<option value="ALL">Semua Guru Pengampu</option>` +
+                state.db.teachers.map(t => `<option value="${t.id}" ${String(state.filters.teacherId) === String(t.id) ? 'selected' : ''}>${t.full_name} (${getTeacherSubjectsText(t)})</option>`).join('');
+
+            clsSelect.innerHTML = `<option value="ALL">Semua Kelas (SMP)</option>` +
+                state.db.classes.map(c => {
+                    const badge = getJenjangBadge(c.grade_level);
+                    return `<option value="${c.id}" ${String(state.filters.classId) === String(c.id) ? 'selected' : ''}>[${badge.jenjang}] ${c.class_name}</option>`;
+                }).join('');
+        }
+    }
+
+    function applyGlobalFilters(type, val) {
+        if (type === 'subject') state.filters.subjectId = val;
+        if (type === 'teacher') state.filters.teacherId = val;
+        if (type === 'class') state.filters.classId = val;
+        populateFilterDropdowns();
+        renderActiveMenu();
+    }
+
+    function resetGlobalFilters() {
+        if (state.currentUser && state.currentUser.role === 'guru') {
+            const teacherRec = getCurrentTeacherRecord();
+            const guruSubIds = getTeacherSubjectIds(teacherRec);
+            state.filters.teacherId = state.currentUser.id;
+            state.filters.subjectId = guruSubIds.length === 1 ? guruSubIds[0] : 'ALL';
+            state.filters.classId = 'ALL';
+        } else {
+            state.filters.subjectId = 'ALL';
+            state.filters.teacherId = 'ALL';
+            state.filters.classId = 'ALL';
+        }
+        state.searchQuery = '';
+        const searchInput = document.getElementById('global-search-input');
+        if (searchInput) searchInput.value = '';
+        populateFilterDropdowns();
+        renderActiveMenu();
+    }
+
+    function handleGlobalSearch(query) {
+        state.searchQuery = (query || '').toLowerCase().trim();
+        renderActiveMenu();
+    }
+
+    function matchesActiveFilters(item) {
+        const isGuru = state.currentUser && state.currentUser.role === 'guru';
+        const teacherRec = getCurrentTeacherRecord();
+
+        if (isGuru && teacherRec) {
+            if (item.teacher_id && String(item.teacher_id) !== String(teacherRec.id)) return false;
+            if (item.username && String(item.id) !== String(teacherRec.id)) return false;
+            if (item.class_id && !(teacherRec.assigned_classes || []).includes(item.class_id)) return false;
+            const guruSubIds = getTeacherSubjectIds(teacherRec);
+            if (item.subject_id && guruSubIds.length > 0 && !guruSubIds.includes(String(item.subject_id))) return false;
+        }
+
+        if (state.filters.subjectId !== 'ALL') {
+            if (item.assigned_subjects || item.username) {
+                const tSubs = getTeacherSubjectIds(item);
+                if (!tSubs.includes(String(state.filters.subjectId))) return false;
+            } else if (item.subject_id && String(item.subject_id) !== String(state.filters.subjectId)) {
+                return false;
+            }
+        }
+
+        if (state.filters.teacherId !== 'ALL') {
+            if (item.teacher_id && String(item.teacher_id) !== String(state.filters.teacherId)) return false;
+            if (item.username && String(item.id) !== String(state.filters.teacherId)) return false;
+        }
+
+        if (state.filters.classId !== 'ALL') {
+            if (item.class_id && String(item.class_id) !== String(state.filters.classId)) return false;
+            if (item.assigned_classes && !item.assigned_classes.includes(state.filters.classId)) return false;
+        }
+
+        if (state.searchQuery) {
+            const hay = JSON.stringify(item).toLowerCase();
+            if (!hay.includes(state.searchQuery)) return false;
+        }
+
+        return true;
+    }
+
+    function syncAllUI() {
+        updateShellIdentity();
+        renderNavigation();
+        populateFilterDropdowns();
+        renderActiveMenu();
+    }
+
+    function renderActiveMenu() {
+        const container = document.getElementById('menu-content-area');
+        if (!container || !state.currentUser) return;
+
+        switch (state.activeMenu) {
+            case 'dashboard': renderDashboard(container); break;
+            case 'guru': renderGuruMenu(container); break;
+            case 'kelas': renderKelasMenu(container); break;
+            case 'mapel': renderMapelMenu(container); break;
+            case 'jurnal': renderJurnalMenu(container); break;
+            case 'jadwal': renderJadwalMenu(container); break;
+            case 'absensi': renderAbsensiMenu(container); break;
+            case 'penilaian': renderPenilaianMenu(container); break;
+            case 'laporan': renderLaporanMenu(container); break;
+            case 'pengaturan': renderPengaturanMenu(container); break;
+            default: renderDashboard(container);
+        }
+    }
+
+    // ============================================================================
+    // MENU 1: DASHBOARD INTERAKTIF (ADMIN & GURU)
+    // ============================================================================
+    function renderDashboard(container) {
+        const isGuru = state.currentUser.role === 'guru';
+        const teacherRec = getCurrentTeacherRecord();
+
+        const scopedClasses = state.db.classes.filter(c => {
+            if (isGuru && !(teacherRec?.assigned_classes || []).includes(c.id)) return false;
+            if (state.filters.classId !== 'ALL' && String(c.id) !== String(state.filters.classId)) return false;
+            return true;
+        });
+
+        const scopedClassIds = scopedClasses.map(c => c.id);
+        const scopedStudents = state.db.students.filter(s => scopedClassIds.includes(s.class_id));
+        const scopedTeachers = state.db.teachers.filter(t => matchesActiveFilters(t));
+        const scopedJournals = state.db.journals.filter(j => matchesActiveFilters(j));
+        const scopedSchedules = state.db.schedules.filter(sc => matchesActiveFilters(sc));
+        const scopedAttendances = state.db.attendances.filter(a => matchesActiveFilters(a));
+
+        const presentCount = scopedAttendances.filter(a => a.status === 'Hadir').length;
+        const attendanceRate = scopedAttendances.length > 0
+            ? ((presentCount / scopedAttendances.length) * 100).toFixed(1)
+            : '100.0';
+
+        container.innerHTML = `
+            <div class="space-y-4">
+                <!-- 6 Top Gradient KPI Cards matching Reference 1 -->
+                <div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
+                    <div class="kpi-card bg-gradient-to-br from-indigo-500 to-purple-600 text-white p-4 rounded-2xl shadow-md">
+                        <div class="flex justify-between items-start mb-2">
+                            <span class="text-[11px] font-bold uppercase tracking-wider text-indigo-100">${isGuru ? 'Total Siswa Diampu' : 'Total Siswa'}</span>
+                            <div class="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center"><i class="fa-solid fa-users text-xs"></i></div>
+                        </div>
+                        <h3 class="text-2xl font-extrabold">${scopedStudents.length}</h3>
+                        <p class="text-[10px] text-indigo-200 mt-1"><i class="fa-solid fa-arrow-trend-up mr-1"></i>Dari ${scopedClasses.length} Kelas Aktif</p>
+                    </div>
+
+                    <div class="kpi-card bg-gradient-to-br from-emerald-500 to-green-600 text-white p-4 rounded-2xl shadow-md">
+                        <div class="flex justify-between items-start mb-2">
+                            <span class="text-[11px] font-bold uppercase tracking-wider text-emerald-100">${isGuru ? 'Kelas Diampu' : 'Total Kelas'}</span>
+                            <div class="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center"><i class="fa-solid fa-school text-xs"></i></div>
+                        </div>
+                        <h3 class="text-2xl font-extrabold">${scopedClasses.length}</h3>
+                        <p class="text-[10px] text-emerald-200 mt-1"><i class="fa-solid fa-layer-group mr-1"></i>Jenjang SMP (VII - IX)</p>
+                    </div>
+
+                    <div class="kpi-card bg-gradient-to-br from-amber-400 to-orange-500 text-white p-4 rounded-2xl shadow-md">
+                        <div class="flex justify-between items-start mb-2">
+                            <span class="text-[11px] font-bold uppercase tracking-wider text-amber-100">Jurnal Mengajar</span>
+                            <div class="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center"><i class="fa-solid fa-book-open text-xs"></i></div>
+                        </div>
+                        <h3 class="text-2xl font-extrabold">${scopedJournals.length}</h3>
+                        <p class="text-[10px] text-amber-100 mt-1"><i class="fa-solid fa-check mr-1"></i>Tersinkronisasi</p>
+                    </div>
+
+                    <div class="kpi-card bg-gradient-to-br from-sky-500 to-blue-600 text-white p-4 rounded-2xl shadow-md">
+                        <div class="flex justify-between items-start mb-2">
+                            <span class="text-[11px] font-bold uppercase tracking-wider text-sky-100">${isGuru ? 'Mapel Diampu' : 'Mata Pelajaran'}</span>
+                            <div class="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center"><i class="fa-solid fa-book-bookmark text-xs"></i></div>
+                        </div>
+                        <h3 class="text-base sm:text-lg font-extrabold truncate" title="${isGuru ? getTeacherSubjectsText(teacherRec) : ''}">${isGuru ? getTeacherSubjectsText(teacherRec) : state.db.subjects.length + ' Mapel'}</h3>
+                        <p class="text-[10px] text-sky-200 mt-1"><i class="fa-solid fa-check mr-1"></i>${isGuru ? getTeacherSubjectIds(teacherRec).length + ' Mapel Aktif' : 'Kurikulum Aktif'}</p>
+                    </div>
+
+                    <div class="kpi-card bg-gradient-to-br from-pink-500 to-rose-600 text-white p-4 rounded-2xl shadow-md">
+                        <div class="flex justify-between items-start mb-2">
+                            <span class="text-[11px] font-bold uppercase tracking-wider text-pink-100">Kehadiran Siswa</span>
+                            <div class="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center"><i class="fa-solid fa-user-check text-xs"></i></div>
+                        </div>
+                        <h3 class="text-2xl font-extrabold">${attendanceRate}%</h3>
+                        <p class="text-[10px] text-pink-200 mt-1"><i class="fa-solid fa-arrow-trend-up mr-1"></i>${scopedAttendances.length} Rekap Presensi</p>
+                    </div>
+
+                    <div class="kpi-card bg-gradient-to-br from-teal-400 to-teal-600 text-white p-4 rounded-2xl shadow-md">
+                        <div class="flex justify-between items-start mb-2">
+                            <span class="text-[11px] font-bold uppercase tracking-wider text-teal-100">${isGuru ? 'Jadwal Mengajar' : 'Total Guru'}</span>
+                            <div class="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center"><i class="fa-solid fa-chalkboard-user text-xs"></i></div>
+                        </div>
+                        <h3 class="text-2xl font-extrabold">${isGuru ? scopedSchedules.length + ' Sesi' : scopedTeachers.length}</h3>
+                        <p class="text-[10px] text-teal-100 mt-1"><i class="fa-solid fa-user-shield mr-1"></i>${isGuru ? 'Jadwal Aktif' : 'Pengajar Terdaftar'}</p>
+                    </div>
+                </div>
+
+                <!-- Bento Grid Middle Section: Analytics Charts & Quick Lists -->
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                    <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200/80 lg:col-span-2">
+                        <div class="flex items-center justify-between mb-4">
+                            <div>
+                                <h3 class="text-sm font-extrabold text-slate-900">Grafik Jumlah Siswa &amp; Presensi per Kelas (SMP)</h3>
+                                <p class="text-[11px] text-slate-500">Otomatis diperbarui saat Admin/Guru menambah kelas, siswa, atau absensi</p>
+                            </div>
+                            <span class="text-xs px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 font-bold border border-emerald-200">Live Sync</span>
+                        </div>
+                        <div class="h-64 flex items-center justify-center">
+                            <canvas id="dashboardChart"></canvas>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200/80 flex flex-col justify-between">
+                        <div>
+                            <div class="flex items-center justify-between mb-3">
+                                <h3 class="text-sm font-extrabold text-slate-900">Jadwal &amp; Jurnal Terbaru</h3>
+                                <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-blue-50 text-blue-600">${scopedSchedules.length} Jadwal</span>
+                            </div>
+                            <div class="space-y-2.5 max-h-60 overflow-y-auto pr-1">
+                                ${scopedSchedules.slice(0, 5).map(sch => `
+                                    <div class="p-3 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-between">
+                                        <div>
+                                            <p class="text-xs font-bold text-slate-800">${getSubjectName(sch.subject_id)}</p>
+                                            <p class="text-[10px] text-slate-500">${getTeacherName(sch.teacher_id)} &bull; ${getClassName(sch.class_id)} (${sch.room})</p>
+                                        </div>
+                                        <div class="text-right">
+                                            <span class="text-[10px] font-extrabold text-indigo-700 block">${sch.day_of_week}</span>
+                                            <span class="text-[10px] font-bold px-2 py-0.5 rounded-lg bg-blue-50 text-blue-600">${sch.start_time}</span>
+                                        </div>
+                                    </div>
+                                `).join('') || `<p class="text-xs text-slate-400 text-center py-6">Belum ada jadwal mengajar.</p>`}
+                            </div>
+                        </div>
+                        <button type="button" onclick="window.app.navigate('jadwal')" class="w-full mt-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition">
+                            Lihat Semua Jadwal &rarr;
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Bento Grid Bottom Section: Rekap Kelas (SMP) dan Daftar Guru Pengampu Real-Time -->
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
+                    <div class="lg:col-span-7 bg-white rounded-2xl p-5 shadow-sm border border-slate-200/80">
+                        <div class="flex items-center justify-between mb-3">
+                            <div>
+                                <h3 class="text-sm font-extrabold text-slate-900">${isGuru ? 'Daftar Kelas yang Diampu & Jumlah Siswa' : 'Rekapitulasi Kelas (SMP) & Jumlah Siswa'}</h3>
+                                <p class="text-[11px] text-slate-500">Data siswa dari setiap kelas yang diinput Admin otomatis terhitung di sini</p>
+                            </div>
+                            <span class="text-xs font-extrabold text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full">Total: ${scopedStudents.length} Siswa</span>
+                        </div>
+                        <div class="overflow-x-auto rounded-xl border border-slate-200 max-h-64 overflow-y-auto">
+                            <table class="w-full text-xs text-left">
+                                <thead class="bg-slate-100 text-slate-700 font-bold sticky top-0">
+                                    <tr>
+                                        <th class="p-2.5 text-center w-10">No</th>
+                                        <th class="p-2.5">Jenjang / Tingkat</th>
+                                        <th class="p-2.5">Nama Kelas</th>
+                                        <th class="p-2.5">Wali Kelas</th>
+                                        <th class="p-2.5">Guru Mapel Pengampu</th>
+                                        <th class="p-2.5 text-center">Jumlah Siswa</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-slate-100">
+                                    ${scopedClasses.map((c, i) => {
+                                        const stuCount = state.db.students.filter(s => String(s.class_id) === String(c.id)).length;
+                                        const badge = getJenjangBadge(c.grade_level);
+                                        const classTeachers = isGuru
+                                            ? (teacherRec ? [teacherRec] : [])
+                                            : state.db.teachers.filter(t => (t.assigned_classes || []).includes(c.id));
+                                        return `
+                                            <tr class="hover:bg-slate-50">
+                                                <td class="p-2.5 text-center font-bold text-slate-500">${i + 1}</td>
+                                                <td class="p-2.5">
+                                                    <span class="px-2 py-0.5 rounded-full text-[10px] font-extrabold border ${badge.color}">${badge.jenjang} - ${badge.levelText}</span>
+                                                </td>
+                                                <td class="p-2.5 font-extrabold text-slate-900">${c.class_name}</td>
+                                                <td class="p-2.5 text-slate-600">${c.homeroom_teacher || '-'}</td>
+                                                <td class="p-2.5">
+                                                    <div class="flex flex-wrap gap-1">
+                                                        ${classTeachers.map(t => `<span class="px-1.5 py-0.5 rounded bg-slate-100 text-slate-700 text-[10px] font-semibold">${t.full_name.split(',')[0]}</span>`).join('') || '<span class="text-[10px] text-slate-400">Belum diatur</span>'}
+                                                    </div>
+                                                </td>
+                                                <td class="p-2.5 text-center">
+                                                    <span class="px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 font-extrabold text-xs">${stuCount} Siswa</span>
+                                                </td>
+                                            </tr>
+                                        `;
+                                    }).join('') || `<tr><td colspan="6" class="text-center py-6 text-slate-400">Belum ada kelas terdaftar.</td></tr>`}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="lg:col-span-5 bg-white rounded-2xl p-5 shadow-sm border border-slate-200/80">
+                        <div class="flex items-center justify-between mb-3">
+                            <div>
+                                <h3 class="text-sm font-extrabold text-slate-900">${isGuru ? 'Identitas Pengajar & Mapel Anda' : 'Daftar Pengajar & Mapel Aktif'}</h3>
+                                <p class="text-[11px] text-slate-500">${isGuru ? 'Data kelas dan mata pelajaran yang Anda ampu' : 'Tersaring otomatis sesuai filter Kelas / Mapel'}</p>
+                            </div>
+                            <span class="text-xs font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full">${scopedTeachers.length} Guru</span>
+                        </div>
+                        <div class="space-y-2 max-h-64 overflow-y-auto pr-1">
+                            ${scopedTeachers.map(t => `
+                                <div class="p-3 rounded-xl border border-slate-200/80 hover:border-blue-300 bg-slate-50/60 flex items-center justify-between gap-2">
+                                    <div>
+                                        <p class="text-xs font-extrabold text-slate-900">${t.full_name}</p>
+                                        <p class="text-[10px] font-bold text-indigo-600">${getTeacherSubjectsText(t)} &bull; <span class="font-mono text-violet-700">ID: ${t.username}</span></p>
+                                        <div class="flex flex-wrap gap-1 mt-1">
+                                            ${(t.assigned_classes || []).map(cid => `<span class="px-1.5 py-0.5 rounded bg-white border border-slate-200 text-slate-700 text-[9px] font-bold">${getClassName(cid)}</span>`).join('')}
+                                        </div>
+                                    </div>
+                                    <span class="text-[10px] px-2 py-1 rounded-lg bg-emerald-50 text-emerald-700 font-bold shrink-0">Aktif</span>
+                                </div>
+                            `).join('') || `<p class="text-center py-6 text-xs text-slate-400">Tidak ada guru pada filter kelas/mapel ini.</p>`}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        setTimeout(() => {
+            const ctx = document.getElementById('dashboardChart');
+            if (ctx && window.Chart) {
+                if (state.charts.dash) state.charts.dash.destroy();
+                const chartLabels = scopedClasses.map(c => c.class_name);
+                const studentCounts = scopedClasses.map(c => state.db.students.filter(s => String(s.class_id) === String(c.id)).length);
+                const presentCounts = scopedClasses.map(c => state.db.attendances.filter(a => {
+                    if (isGuru && String(a.teacher_id) !== String(state.currentUser.id)) return false;
+                    return String(a.class_id) === String(c.id) && a.status === 'Hadir';
+                }).length);
+
+                state.charts.dash = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: chartLabels.length ? chartLabels : ['Belum Ada Kelas'],
+                        datasets: [
+                            { label: 'Jumlah Siswa di Kelas', data: studentCounts.length ? studentCounts : [0], backgroundColor: '#6366F1', borderRadius: 6 },
+                            { label: 'Presensi Hadir Tercatat', data: presentCounts.length ? presentCounts : [0], backgroundColor: '#10B981', borderRadius: 6 }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { position: 'bottom', labels: { font: { size: 11, family: 'Plus Jakarta Sans' } } } },
+                        scales: { x: { grid: { display: false } }, y: { beginAtZero: true, ticks: { precision: 0 } } }
+                    }
+                });
+            }
+        }, 50);
+    }
+
+    // ============================================================================
+    // MENU 2: INPUT DATA GURU (MULTI-MAPEL & JENJANG SMP)
+    // ============================================================================
+    function renderGuruMenu(container) {
+        const filteredTeachers = state.db.teachers.filter(t => matchesActiveFilters(t));
+        const activeClassFilter = state.filters.classId;
+        const activeSubjectFilter = state.filters.subjectId;
+
+        container.innerHTML = `
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
+                <!-- Form Input Guru -->
+                <div class="lg:col-span-4 bg-white rounded-2xl p-5 shadow-sm border border-slate-200/80 h-fit">
+                    <h3 id="guru-form-title" class="text-sm font-extrabold text-slate-900 mb-3 flex items-center gap-2">
+                        <i class="fa-solid fa-user-plus text-blue-600"></i>
+                        <span>Tambah Data Guru Baru</span>
+                    </h3>
+                    <form onsubmit="window.app.saveTeacher(event)" class="space-y-3">
+                        <input type="hidden" id="guru-edit-id" value="">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1">Nama Lengkap &amp; Gelar</label>
+                            <input type="text" id="guru-name" required placeholder="contoh: Dr. H. M. Said, M.Pd." class="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1">Nomor Induk Pegawai (NIP)</label>
+                            <input type="text" id="guru-nip" required placeholder="19800101 200501 1 001" class="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-mono">
+                        </div>
+                        <div class="grid grid-cols-2 gap-2">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 mb-1">Username Login</label>
+                                <input type="text" id="guru-username" required placeholder="said_bio" class="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 mb-1">Password</label>
+                                <input type="text" id="guru-password" required placeholder="guru123" value="guru123" class="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs">
+                            </div>
+                        </div>
+                        <div>
+                            <div class="flex items-center justify-between mb-1">
+                                <label class="text-xs font-bold text-slate-700">Mata Pelajaran yang Diampu (Bisa &gt; 1 Mapel)</label>
+                                <button type="button" onclick="window.app.toggleAllGuruSubjects()" class="text-[10px] font-bold text-indigo-600 hover:underline">Pilih Semua Mapel</button>
+                            </div>
+                            <div class="space-y-1.5 max-h-36 overflow-y-auto p-2.5 rounded-xl border border-slate-200 bg-slate-50">
+                                ${state.db.subjects.map(s => {
+                                    const isSubChecked = activeSubjectFilter !== 'ALL' && String(activeSubjectFilter) === String(s.id);
+                                    return `
+                                    <label class="flex items-center justify-between gap-2 text-xs font-medium cursor-pointer p-1 rounded hover:bg-white">
+                                        <span class="flex items-center gap-2">
+                                            <input type="checkbox" name="guru-subjects" value="${s.id}" ${isSubChecked ? 'checked' : ''} class="rounded text-indigo-600 border-slate-300">
+                                            <span class="font-bold text-slate-800">${s.subject_name}</span>
+                                        </span>
+                                        <span class="px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700 border border-indigo-200 text-[9px] font-mono font-bold">${s.subject_code}</span>
+                                    </label>
+                                `}).join('') || '<p class="text-[11px] text-slate-400 italic py-2 text-center">Belum ada mata pelajaran. Silakan tambah di menu Input Mata Pelajaran.</p>'}
+                            </div>
+                        </div>
+                        <div>
+                            <div class="flex items-center justify-between mb-1">
+                                <label class="text-xs font-bold text-slate-700">Kelas yang Diampu (Jenjang SMP)</label>
+                                <button type="button" onclick="window.app.toggleAllGuruClasses()" class="text-[10px] font-bold text-blue-600 hover:underline">Pilih Semua Kelas</button>
+                            </div>
+                            <div class="space-y-1.5 max-h-44 overflow-y-auto p-2.5 rounded-xl border border-slate-200 bg-slate-50">
+                                ${state.db.classes.map(c => {
+                                    const badge = getJenjangBadge(c.grade_level);
+                                    const isPrechecked = activeClassFilter !== 'ALL' && String(activeClassFilter) === String(c.id);
+                                    return `
+                                    <label class="flex items-center justify-between gap-2 text-xs font-medium cursor-pointer p-1 rounded hover:bg-white">
+                                        <span class="flex items-center gap-2">
+                                            <input type="checkbox" name="guru-classes" value="${c.id}" ${isPrechecked ? 'checked' : ''} class="rounded text-blue-600 border-slate-300">
+                                            <span class="font-bold text-slate-800">${c.class_name}</span>
+                                        </span>
+                                        <span class="px-1.5 py-0.5 rounded text-[9px] font-extrabold border ${badge.color}">${badge.jenjang} - ${badge.levelText}</span>
+                                    </label>
+                                `}).join('') || '<p class="text-[11px] text-slate-400 italic py-2 text-center">Belum ada kelas. Silakan tambah kelas di menu Input Data Kelas & Siswa.</p>'}
+                            </div>
+                        </div>
+                        <div class="flex gap-2 pt-2">
+                            <button type="submit" class="flex-1 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow transition">Simpan Guru</button>
+                            <button type="button" onclick="window.app.resetGuruForm()" class="px-3 py-2.5 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold text-xs rounded-xl transition">Batal</button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Daftar Tabel Guru & Filter Kelas Cepat -->
+                <div class="lg:col-span-8 bg-white rounded-2xl p-5 shadow-sm border border-slate-200/80">
+                    <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+                        <div>
+                            <h3 class="text-sm font-extrabold text-slate-900">Daftar Pengajar &amp; Akun Login (Multi-Mapel &amp; Kelas SMP)</h3>
+                            <p class="text-[11px] text-slate-500">Pilih filter kelas di bawah atau di bar atas untuk menampilkan guru sesuai kelas dan mapel yang diampu</p>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <div class="flex items-center bg-blue-50/80 border border-blue-200 rounded-xl px-3 py-1.5">
+                                <i class="fa-solid fa-filter text-blue-600 text-xs mr-2"></i>
+                                <span class="text-[11px] font-bold text-slate-600 mr-1.5">Filter Kelas:</span>
+                                <select onchange="window.app.applyGlobalFilters('class', this.value)" class="bg-transparent text-xs font-extrabold text-blue-900 focus:outline-none cursor-pointer">
+                                    <option value="ALL" ${activeClassFilter === 'ALL' ? 'selected' : ''}>Semua Kelas (${state.db.teachers.length} Guru)</option>
+                                    ${state.db.classes.map(c => {
+                                        const b = getJenjangBadge(c.grade_level);
+                                        const countInClass = state.db.teachers.filter(t => (t.assigned_classes || []).includes(c.id)).length;
+                                        return `<option value="${c.id}" ${String(activeClassFilter) === String(c.id) ? 'selected' : ''}>[${b.jenjang}] ${c.class_name} (${countInClass} Guru)</option>`;
+                                    }).join('')}
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="overflow-x-auto rounded-xl border border-slate-200">
+                        <table class="w-full text-xs text-left">
+                            <thead class="bg-slate-100 text-slate-700 font-bold">
+                                <tr>
+                                    <th class="p-3 w-10 text-center">No</th>
+                                    <th class="p-3">Nama &amp; NIP Guru</th>
+                                    <th class="p-3">Akun Login (Username &amp; Sandi)</th>
+                                    <th class="p-3">Mata Pelajaran Diampu</th>
+                                    <th class="p-3">Kelas yang Diampu (SMP)</th>
+                                    <th class="p-3 text-center w-24">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100">
+                                ${filteredTeachers.map((t, idx) => {
+                                    const tSubIds = getTeacherSubjectIds(t);
+                                    return `
+                                    <tr class="hover:bg-slate-50">
+                                        <td class="p-3 text-center font-bold text-slate-500">${idx + 1}</td>
+                                        <td class="p-3">
+                                            <p class="font-extrabold text-slate-900">${t.full_name}</p>
+                                            <p class="text-[10px] font-mono text-slate-500">NIP. ${t.nip}</p>
+                                        </td>
+                                        <td class="p-3">
+                                            <div class="inline-flex flex-col bg-violet-50 border border-violet-200/80 rounded-lg px-2.5 py-1">
+                                                <span class="font-mono font-extrabold text-violet-700 text-xs"><i class="fa-regular fa-user mr-1"></i>${t.username}</span>
+                                                <span class="font-mono text-[10px] text-slate-500"><i class="fa-solid fa-key mr-1"></i>${t.password}</span>
+                                            </div>
+                                        </td>
+                                        <td class="p-3">
+                                            <div class="flex flex-wrap gap-1">
+                                                ${tSubIds.map(sid => {
+                                                    const isSubHighlighted = activeSubjectFilter !== 'ALL' && String(activeSubjectFilter) === String(sid);
+                                                    return `<span class="px-2 py-0.5 rounded ${isSubHighlighted ? 'bg-indigo-600 text-white ring-2 ring-indigo-200' : 'bg-indigo-50 text-indigo-700 border border-indigo-200/70'} text-[10px] font-extrabold">${getSubjectName(sid)}</span>`;
+                                                }).join('') || '<span class="text-[10px] text-slate-400 italic">Belum diatur</span>'}
+                                            </div>
+                                        </td>
+                                        <td class="p-3">
+                                            <div class="flex flex-wrap gap-1">
+                                                ${(t.assigned_classes || []).map(cid => {
+                                                    const isHighlighted = activeClassFilter !== 'ALL' && String(activeClassFilter) === String(cid);
+                                                    return `<span class="px-2 py-0.5 rounded ${isHighlighted ? 'bg-blue-600 text-white ring-2 ring-blue-200' : 'bg-blue-50 text-blue-700'} text-[10px] font-bold">${getClassName(cid)}</span>`;
+                                                }).join('') || '<span class="text-[10px] text-slate-400 italic">Semua / Belum dipilih</span>'}
+                                            </div>
+                                        </td>
+                                        <td class="p-3 text-center">
+                                            <div class="flex items-center justify-center gap-1">
+                                                <button type="button" onclick="window.app.editTeacher('${t.id}')" title="Edit Guru" class="p-1.5 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white transition"><i class="fa-solid fa-pen"></i></button>
+                                                <button type="button" onclick="window.app.deleteTeacher('${t.id}')" title="Hapus Guru" class="p-1.5 rounded-lg bg-rose-50 text-rose-600 hover:bg-rose-600 hover:text-white transition"><i class="fa-solid fa-trash"></i></button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                `}).join('') || `<tr><td colspan="6" class="text-center py-8 text-slate-400 font-semibold">Belum ada data guru terdaftar. Silakan input data guru di sebelah kiri.</td></tr>`}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    function toggleAllGuruSubjects() {
+        const boxes = Array.from(document.querySelectorAll('input[name="guru-subjects"]'));
+        const allChecked = boxes.length > 0 && boxes.every(cb => cb.checked);
+        boxes.forEach(cb => cb.checked = !allChecked);
+    }
+
+    function toggleAllGuruClasses() {
+        const boxes = Array.from(document.querySelectorAll('input[name="guru-classes"]'));
+        const allChecked = boxes.length > 0 && boxes.every(cb => cb.checked);
+        boxes.forEach(cb => cb.checked = !allChecked);
+    }
+
+    async function saveTeacher(e) {
+        e.preventDefault();
+        const editId = document.getElementById('guru-edit-id').value;
+        const name = document.getElementById('guru-name').value.trim();
+        const nip = document.getElementById('guru-nip').value.trim();
+        const username = document.getElementById('guru-username').value.trim();
+        const password = document.getElementById('guru-password').value.trim();
+
+        const subjectCheckboxes = document.querySelectorAll('input[name="guru-subjects"]:checked');
+        let assignedSubjects = Array.from(subjectCheckboxes).map(cb => cb.value);
+
+        if (assignedSubjects.length === 0 && state.db.subjects.length > 0) {
+            if (state.filters.subjectId !== 'ALL') {
+                assignedSubjects = [state.filters.subjectId];
+            } else {
+                assignedSubjects = [state.db.subjects[0].id];
+            }
+        }
+
+        if (assignedSubjects.length === 0) {
+            showToast('Silakan tambahkan/pilih minimal 1 Mata Pelajaran terlebih dahulu!', 'error');
+            return;
+        }
+
+        const primarySubjectId = assignedSubjects[0];
+        const combinedSubjectNames = assignedSubjects.map(sid => getSubjectName(sid)).join(', ');
+
+        const classCheckboxes = document.querySelectorAll('input[name="guru-classes"]:checked');
+        let assignedClasses = Array.from(classCheckboxes).map(cb => cb.value);
+
+        if (assignedClasses.length === 0 && state.db.classes.length > 0) {
+            if (state.filters.classId !== 'ALL') {
+                assignedClasses = [state.filters.classId];
+            } else {
+                assignedClasses = state.db.classes.map(c => c.id);
+            }
+        }
+
+        const payload = {
+            id: editId || `guru-${Date.now()}`,
+            full_name: name,
+            nip,
+            username,
+            password,
+            subject_id: primarySubjectId,
+            assigned_subjects: assignedSubjects,
+            subject_name: combinedSubjectNames,
+            assigned_classes: assignedClasses
+        };
+
+        if (editId) {
+            const idx = state.db.teachers.findIndex(t => String(t.id) === String(editId));
+            if (idx > -1) state.db.teachers[idx] = payload;
+        } else {
+            state.db.teachers.unshift(payload);
+        }
+
+        if (state.filters.teacherId !== 'ALL' && String(state.filters.teacherId) !== String(payload.id)) {
+            state.filters.teacherId = 'ALL';
+        }
+        if (state.filters.subjectId !== 'ALL' && !assignedSubjects.includes(state.filters.subjectId)) {
+            state.filters.subjectId = 'ALL';
+        }
+        if (state.filters.classId !== 'ALL' && !assignedClasses.includes(state.filters.classId)) {
+            state.filters.classId = 'ALL';
+        }
+
+        if (!IS_PREVIEW && supabase) {
+            await supabase.from('teachers').upsert([payload]);
+        }
+
+        resetGuruForm();
+        syncAllUI();
+        showToast(`Data guru ${name} (${combinedSubjectNames}) berhasil disimpan!`);
+    }
+
+    function editTeacher(id) {
+        const t = state.db.teachers.find(x => String(x.id) === String(id));
+        if (!t) return;
+        document.getElementById('guru-edit-id').value = t.id;
+        document.getElementById('guru-name').value = t.full_name;
+        document.getElementById('guru-nip').value = t.nip;
+        document.getElementById('guru-username').value = t.username;
+        document.getElementById('guru-password').value = t.password;
+        document.getElementById('guru-form-title').innerHTML = `<i class="fa-solid fa-pen-to-square text-blue-600"></i><span>Edit Data Guru</span>`;
+
+        const tSubIds = getTeacherSubjectIds(t);
+        document.querySelectorAll('input[name="guru-subjects"]').forEach(cb => {
+            cb.checked = tSubIds.includes(String(cb.value));
+        });
+
+        document.querySelectorAll('input[name="guru-classes"]').forEach(cb => {
+            cb.checked = (t.assigned_classes || []).includes(cb.value);
+        });
+    }
+
+    function resetGuruForm() {
+        const editEl = document.getElementById('guru-edit-id');
+        if (!editEl) return;
+        editEl.value = '';
+        document.getElementById('guru-name').value = '';
+        document.getElementById('guru-nip').value = '';
+        document.getElementById('guru-username').value = '';
+        document.getElementById('guru-password').value = 'guru123';
+        document.getElementById('guru-form-title').innerHTML = `<i class="fa-solid fa-user-plus text-blue-600"></i><span>Tambah Data Guru Baru</span>`;
+        document.querySelectorAll('input[name="guru-subjects"]').forEach(cb => cb.checked = false);
+        document.querySelectorAll('input[name="guru-classes"]').forEach(cb => cb.checked = false);
+    }
+
+    function deleteTeacher(id) {
+        showConfirmModal('Hapus Guru', 'Apakah Anda yakin ingin menghapus data guru ini?', async () => {
+            state.db.teachers = state.db.teachers.filter(t => String(t.id) !== String(id));
+            if (!IS_PREVIEW && supabase) {
+                await supabase.from('teachers').delete().eq('id', id);
+            }
+            syncAllUI();
+            showToast('Data guru berhasil dihapus.');
+        });
+    }
+
+    // ============================================================================
+    // MENU 3: INPUT DATA KELAS & SISWA (JENJANG SMP + TAMBAH SISWA MASSAL)
+    // ============================================================================
+    function renderKelasMenu(container) {
+        const selectedClassId = (state.filters.classId !== 'ALL' && state.db.classes.some(c => String(c.id) === String(state.filters.classId)))
+            ? state.filters.classId
+            : (state.db.classes[0]?.id || '');
+        const currentClassStudents = state.db.students.filter(s => String(s.class_id) === String(selectedClassId));
+
+        container.innerHTML = `
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
+                <!-- Kolom Kiri: Input Kelas (SMP) & Input Siswa (Satuan / Massal) -->
+                <div class="lg:col-span-5 space-y-4">
+                    <!-- 1. Form Tambah / Edit Kelas Baru (Khusus Jenjang SMP) -->
+                    <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200/80">
+                        <h3 id="class-form-title" class="text-sm font-extrabold text-slate-900 mb-3 flex items-center gap-2">
+                            <i class="fa-solid fa-school text-blue-600"></i>
+                            <span>1. Input / Tambah Data Kelas (SMP)</span>
+                        </h3>
+                        <form onsubmit="window.app.saveClass(event)" class="space-y-3">
+                            <input type="hidden" id="class-edit-id" value="">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 mb-1">Nama Kelas / Rombel</label>
+                                <input type="text" id="class-name" required placeholder="contoh: VII A, VIII B, atau IX C" class="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs">
+                            </div>
+                            <div class="grid grid-cols-2 gap-2">
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-700 mb-1">Tingkat Kelas (SMP)</label>
+                                    <select id="class-grade-level" class="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs bg-white font-bold text-slate-800">
+                                        <option value="VII SMP" selected>Kelas VII (7 SMP)</option>
+                                        <option value="VIII SMP">Kelas VIII (8 SMP)</option>
+                                        <option value="IX SMP">Kelas IX (9 SMP)</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-700 mb-1">Wali Kelas</label>
+                                    <input type="text" id="class-homeroom" list="homeroom-teachers-list" required placeholder="Pilih / Ketik Wali Kelas" class="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs">
+                                    <datalist id="homeroom-teachers-list">
+                                        ${state.db.teachers.map(t => `<option value="${t.full_name}"></option>`).join('')}
+                                    </datalist>
+                                </div>
+                            </div>
+                            <div class="flex gap-2 pt-1">
+                                <button type="submit" class="flex-1 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow transition">Simpan Kelas</button>
+                                <button type="button" onclick="window.app.resetClassForm()" class="px-3 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold text-xs rounded-xl transition">Reset</button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- 2. Form Tambah Siswa (Satuan atau Massal) -->
+                    <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200/80">
+                        <div class="flex items-center justify-between mb-3">
+                            <h3 class="text-sm font-extrabold text-slate-900 flex items-center gap-2">
+                                <i class="fa-solid fa-user-plus text-emerald-600"></i>
+                                <span>2. Input Siswa ke Kelas</span>
+                            </h3>
+                            <div class="flex bg-slate-100 p-1 rounded-xl">
+                                <button type="button" onclick="window.app.toggleStudentInputMode('satuan')" id="btn-mode-satuan" class="px-3 py-1 rounded-lg text-xs font-bold bg-white text-slate-800 shadow-sm transition">Satuan</button>
+                                <button type="button" onclick="window.app.toggleStudentInputMode('massal')" id="btn-mode-massal" class="px-3 py-1 rounded-lg text-xs font-bold text-slate-600 transition">Massal / Banyak</button>
+                            </div>
+                        </div>
+
+                        <!-- Pilih Kelas Tujuan -->
+                        <div class="mb-3">
+                            <label class="block text-xs font-bold text-slate-700 mb-1">Pilih Kelas Tujuan (SMP)</label>
+                            <select id="student-target-class-id" onchange="window.app.selectClassForStudentInput(this.value)" class="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-bold bg-slate-50 text-indigo-900">
+                                ${state.db.classes.map(c => {
+                                    const b = getJenjangBadge(c.grade_level);
+                                    return `<option value="${c.id}" ${String(c.id) === String(selectedClassId) ? 'selected' : ''}>[${b.jenjang} - ${b.levelText}] ${c.class_name}</option>`;
+                                }).join('') || '<option value="">-- Buat Kelas Baru Terlebih Dahulu --</option>'}
+                            </select>
+                        </div>
+
+                        <!-- Form Mode Satuan -->
+                        <form id="form-student-satuan" onsubmit="window.app.saveStudent(event)" class="space-y-3">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 mb-1">Nomor Induk Siswa Nasional (NISN)</label>
+                                <input type="text" id="student-nisn" required placeholder="008112399" class="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-mono">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 mb-1">Nama Lengkap Siswa</label>
+                                <input type="text" id="student-name" required placeholder="Nama Siswa" class="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 mb-1">Jenis Kelamin</label>
+                                <select id="student-gender" class="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs bg-white">
+                                    <option value="L">Laki-laki (L)</option>
+                                    <option value="P">Perempuan (P)</option>
+                                </select>
+                            </div>
+                            <button type="submit" class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow transition">Tambah Siswa Satuan</button>
+                        </form>
+
+                        <!-- Form Mode Massal / Banyak -->
+                        <div id="form-student-massal" class="space-y-3 hidden">
+                            <div>
+                                <div class="flex justify-between items-center mb-1">
+                                    <label class="text-xs font-bold text-slate-700">Paste Data Siswa (Format: NISN, Nama, L/P)</label>
+                                    <button type="button" onclick="window.app.fillSampleBulkStudents()" class="text-[10px] text-blue-600 hover:underline font-bold">+ Isi Contoh Data</button>
+                                </div>
+                                <textarea id="bulk-student-textarea" rows="4" placeholder="0081231, Ahmad Fauzi, L&#10;0081232, Siti Rahma, P" class="w-full p-2.5 rounded-xl border border-slate-200 text-xs font-mono"></textarea>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 mb-1">Atau Upload File CSV / TXT</label>
+                                <input type="file" id="bulk-student-file" accept=".csv,.txt" onchange="window.app.handleBulkCsvUpload(event)" class="text-[11px] text-slate-500">
+                            </div>
+                            <button type="button" onclick="window.app.saveBulkStudents()" class="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow transition">
+                                <i class="fa-solid fa-cloud-arrow-up mr-1.5"></i>Simpan Siswa Massal
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Kolom Kanan: Daftar Kelas (SMP) & Tabel Siswa Terhubung -->
+                <div class="lg:col-span-7 space-y-4">
+                    <!-- Daftar Rombel Kelas -->
+                    <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200/80">
+                        <div class="flex items-center justify-between mb-3">
+                            <h3 class="text-sm font-extrabold text-slate-900">Daftar Rombel Kelas (Jenjang SMP)</h3>
+                            <span class="text-xs font-bold text-slate-500">${state.db.classes.length} Rombel Terdaftar</span>
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                            ${state.db.classes.map(c => {
+                                const cnt = state.db.students.filter(s => String(s.class_id) === String(c.id)).length;
+                                const isSel = String(c.id) === String(selectedClassId);
+                                const badge = getJenjangBadge(c.grade_level);
+                                const teacherCount = state.db.teachers.filter(t => (t.assigned_classes || []).includes(c.id)).length;
+                                return `
+                                    <div onclick="window.app.selectClassForStudentInput('${c.id}')"
+                                        class="p-3 rounded-xl border cursor-pointer transition ${
+                                            isSel ? 'border-blue-600 bg-blue-50/70 shadow-sm ring-1 ring-blue-500/30' : 'border-slate-200 bg-white hover:border-slate-300'
+                                        }">
+                                        <div class="flex justify-between items-center mb-1.5">
+                                            <span class="px-2 py-0.5 rounded-full text-[9px] font-extrabold border ${badge.color}">${badge.jenjang} &bull; Kelas ${badge.levelText}</span>
+                                            <span class="text-[10px] px-1.5 py-0.5 rounded bg-blue-600 text-white font-bold">${cnt} Siswa</span>
+                                        </div>
+                                        <p class="text-xs font-extrabold text-slate-900">${c.class_name}</p>
+                                        <p class="text-[10px] text-slate-500 truncate mt-0.5">Wali: ${c.homeroom_teacher}</p>
+                                        <p class="text-[10px] text-indigo-600 font-semibold mt-0.5"><i class="fa-solid fa-chalkboard-user mr-1"></i>${teacherCount} Guru Pengajar</p>
+                                        <div class="mt-2 pt-2 border-t border-slate-200/60 flex justify-end gap-1.5">
+                                            <button type="button" onclick="event.stopPropagation(); window.app.editClass('${c.id}')" class="text-[10px] text-blue-600 hover:underline font-bold">Edit</button>
+                                            <span class="text-slate-300">|</span>
+                                            <button type="button" onclick="event.stopPropagation(); window.app.deleteClass('${c.id}')" class="text-[10px] text-rose-600 hover:underline font-bold">Hapus</button>
+                                        </div>
+                                    </div>
+                                `;
+                            }).join('') || '<p class="col-span-3 text-center py-6 text-xs text-slate-400">Belum ada kelas terdaftar. Silakan buat kelas baru pada form 1 di samping.</p>'}
+                        </div>
+                    </div>
+
+                    <!-- Tabel Siswa pada Kelas Terpilih -->
+                    <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200/80">
+                        <div class="flex items-center justify-between mb-3">
+                            <h3 class="text-sm font-extrabold text-slate-900">Daftar Siswa di Kelas: <span class="text-blue-600">${getClassName(selectedClassId)}</span></h3>
+                            <span class="text-xs font-bold text-slate-500">Total: ${currentClassStudents.length} Siswa</span>
+                        </div>
+                        <div class="overflow-x-auto rounded-xl border border-slate-200 max-h-72 overflow-y-auto">
+                            <table class="w-full text-xs text-left">
+                                <thead class="bg-slate-100 text-slate-700 font-bold sticky top-0">
+                                    <tr>
+                                        <th class="p-2.5 w-10 text-center">No</th>
+                                        <th class="p-2.5">NISN</th>
+                                        <th class="p-2.5">Nama Lengkap Siswa</th>
+                                        <th class="p-2.5 text-center w-16">L/P</th>
+                                        <th class="p-2.5 text-center w-16">Aksi</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-slate-100">
+                                    ${currentClassStudents.map((s, idx) => `
+                                        <tr class="hover:bg-slate-50">
+                                            <td class="p-2.5 text-center font-bold text-slate-500">${idx + 1}</td>
+                                            <td class="p-2.5 font-mono text-slate-700">${s.nisn}</td>
+                                            <td class="p-2.5 font-bold text-slate-900">${s.student_name}</td>
+                                            <td class="p-2.5 text-center font-bold text-indigo-600">${s.gender}</td>
+                                            <td class="p-2.5 text-center">
+                                                <button type="button" onclick="window.app.deleteStudent('${s.id}')" class="p-1 rounded bg-rose-50 text-rose-600 hover:bg-rose-600 hover:text-white transition"><i class="fa-solid fa-trash"></i></button>
+                                            </td>
+                                        </tr>
+                                    `).join('') || `<tr><td colspan="5" class="text-center py-6 text-slate-400">Belum ada siswa di kelas ini.</td></tr>`}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    async function saveClass(e) {
+        e.preventDefault();
+        const editId = document.getElementById('class-edit-id').value;
+        const name = document.getElementById('class-name').value.trim();
+        const gradeLevel = document.getElementById('class-grade-level').value;
+        const homeroom = document.getElementById('class-homeroom').value.trim();
+
+        const payload = {
+            id: editId || `kls-${Date.now()}`,
+            class_name: name,
+            grade_level: gradeLevel,
+            homeroom_teacher: homeroom
+        };
+
+        if (editId) {
+            const idx = state.db.classes.findIndex(c => String(c.id) === String(editId));
+            if (idx > -1) state.db.classes[idx] = payload;
+            state.db.students.forEach(s => {
+                if (String(s.class_id) === String(editId)) s.class_name = name;
+            });
+        } else {
+            state.db.classes.push(payload);
+            state.filters.classId = payload.id;
+        }
+
+        const matchedTeacher = state.db.teachers.find(t => t.full_name.toLowerCase() === homeroom.toLowerCase());
+        if (matchedTeacher) {
+            if (!Array.isArray(matchedTeacher.assigned_classes)) matchedTeacher.assigned_classes = [];
+            if (!matchedTeacher.assigned_classes.includes(payload.id)) {
+                matchedTeacher.assigned_classes.push(payload.id);
+            }
+        }
+
+        if (!IS_PREVIEW && supabase) {
+            await supabase.from('classes').upsert([payload]);
+        }
+
+        resetClassForm();
+        syncAllUI();
+        showToast(`Data kelas ${name} (${gradeLevel}) berhasil disimpan!`);
+    }
+
+    function editClass(id) {
+        const c = state.db.classes.find(x => String(x.id) === String(id));
+        if (!c) return;
+        document.getElementById('class-edit-id').value = c.id;
+        document.getElementById('class-name').value = c.class_name;
+        const gradeSelect = document.getElementById('class-grade-level');
+        const normalizedGrade = c.grade_level.includes('SMP')
+            ? c.grade_level
+            : `${c.grade_level.replace('SMA', '').trim() || 'VII'} SMP`;
+        gradeSelect.value = ['VII SMP', 'VIII SMP', 'IX SMP'].includes(normalizedGrade) ? normalizedGrade : 'VII SMP';
+        document.getElementById('class-homeroom').value = c.homeroom_teacher;
+        document.getElementById('class-form-title').innerHTML = `<i class="fa-solid fa-pen-to-square text-blue-600"></i><span>Edit Data Kelas (${c.class_name})</span>`;
+    }
+
+    function resetClassForm() {
+        const editEl = document.getElementById('class-edit-id');
+        if (!editEl) return;
+        editEl.value = '';
+        document.getElementById('class-name').value = '';
+        document.getElementById('class-homeroom').value = '';
+        document.getElementById('class-form-title').innerHTML = `<i class="fa-solid fa-school text-blue-600"></i><span>1. Input / Tambah Data Kelas (SMP)</span>`;
+    }
+
+    function selectClassForStudentInput(classId) {
+        state.filters.classId = classId;
+        syncAllUI();
+    }
+
+    function toggleStudentInputMode(mode) {
+        const satuanForm = document.getElementById('form-student-satuan');
+        const massalForm = document.getElementById('form-student-massal');
+        const btnSatuan = document.getElementById('btn-mode-satuan');
+        const btnMassal = document.getElementById('btn-mode-massal');
+        if (!satuanForm || !massalForm) return;
+
+        if (mode === 'satuan') {
+            satuanForm.classList.remove('hidden');
+            massalForm.classList.add('hidden');
+            btnSatuan.className = 'px-3 py-1 rounded-lg text-xs font-bold bg-white text-slate-800 shadow-sm transition';
+            btnMassal.className = 'px-3 py-1 rounded-lg text-xs font-bold text-slate-600 transition';
+        } else {
+            satuanForm.classList.add('hidden');
+            massalForm.classList.remove('hidden');
+            btnMassal.className = 'px-3 py-1 rounded-lg text-xs font-bold bg-white text-slate-800 shadow-sm transition';
+            btnSatuan.className = 'px-3 py-1 rounded-lg text-xs font-bold text-slate-600 transition';
+        }
+    }
+
+    async function saveStudent(e) {
+        e.preventDefault();
+        const classId = document.getElementById('student-target-class-id').value;
+        if (!classId) {
+            showToast('Pilih atau buat kelas terlebih dahulu!', 'error');
+            return;
+        }
+        const nisn = document.getElementById('student-nisn').value.trim();
+        const name = document.getElementById('student-name').value.trim();
+        const gender = document.getElementById('student-gender').value;
+
+        const payload = {
+            id: `stu-${Date.now()}`,
+            nisn,
+            student_name: name,
+            gender,
+            class_id: classId,
+            class_name: getClassName(classId)
+        };
+
+        state.db.students.push(payload);
+        if (!IS_PREVIEW && supabase) {
+            await supabase.from('students').upsert([payload]);
+        }
+
+        document.getElementById('student-nisn').value = '';
+        document.getElementById('student-name').value = '';
+        syncAllUI();
+        showToast(`Siswa ${name} ditambahkan ke kelas ${getClassName(classId)}!`);
+    }
+
+    function fillSampleBulkStudents() {
+        const ta = document.getElementById('bulk-student-textarea');
+        if (!ta) return;
+        ta.value = `008901, AKIN NURLATU, L\n008902, ALDO WAEL, L\n008903, ANDINI AULIA, P\n008904, AYU NURLATU, P\n008905, DISYEN NURLATU, P`;
+    }
+
+    function handleBulkCsvUpload(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const ta = document.getElementById('bulk-student-textarea');
+            if (ta) ta.value = e.target.result;
+        };
+        reader.readAsText(file);
+    }
+
+    async function saveBulkStudents() {
+        const classId = document.getElementById('student-target-class-id').value;
+        const raw = document.getElementById('bulk-student-textarea')?.value.trim();
+        if (!classId) {
+            showToast('Pilih kelas tujuan terlebih dahulu!', 'error');
+            return;
+        }
+        if (!raw) {
+            showToast('Masukkan daftar siswa terlebih dahulu!', 'error');
+            return;
+        }
+
+        const lines = raw.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+        const added = [];
+        lines.forEach((line, idx) => {
+            const parts = line.split(/[,;\t]/).map(p => p.trim()).filter(Boolean);
+            let nisn = `008${Date.now().toString().slice(-4)}${idx}`;
+            let name = line;
+            let gender = 'L';
+
+            if (parts.length >= 3) {
+                nisn = parts[0];
+                name = parts[1];
+                gender = parts[2].toUpperCase().startsWith('P') ? 'P' : 'L';
+            } else if (parts.length === 2) {
+                if (/^\d+$/.test(parts[0])) {
+                    nisn = parts[0];
+                    name = parts[1];
+                } else {
+                    name = parts[0];
+                    gender = parts[1].toUpperCase().startsWith('P') ? 'P' : 'L';
+                }
+            }
+
+            added.push({
+                id: `stu-${Date.now()}-${idx}`,
+                nisn,
+                student_name: name,
+                gender,
+                class_id: classId,
+                class_name: getClassName(classId)
+            });
+        });
+
+        state.db.students.push(...added);
+        if (!IS_PREVIEW && supabase && added.length > 0) {
+            await supabase.from('students').upsert(added);
+        }
+
+        syncAllUI();
+        showToast(`${added.length} siswa berhasil ditambahkan secara massal ke kelas ${getClassName(classId)}!`);
+    }
+
+    function deleteClass(id) {
+        showConfirmModal('Hapus Kelas', 'Menghapus kelas juga akan menghapus daftar siswa di dalamnya. Lanjutkan?', async () => {
+            state.db.classes = state.db.classes.filter(c => String(c.id) !== String(id));
+            state.db.students = state.db.students.filter(s => String(s.class_id) !== String(id));
+            if (String(state.filters.classId) === String(id)) state.filters.classId = 'ALL';
+            if (!IS_PREVIEW && supabase) {
+                await supabase.from('classes').delete().eq('id', id);
+            }
+            syncAllUI();
+            showToast('Data kelas berhasil dihapus.');
+        });
+    }
+
+    function deleteStudent(id) {
+        showConfirmModal('Hapus Siswa', 'Yakin ingin menghapus data siswa ini?', async () => {
+            state.db.students = state.db.students.filter(s => String(s.id) !== String(id));
+            if (!IS_PREVIEW && supabase) {
+                await supabase.from('students').delete().eq('id', id);
+            }
+            syncAllUI();
+            showToast('Siswa berhasil dihapus.');
+        });
+    }
+
+    // ============================================================================
+    // MENU 4: INPUT MATA PELAJARAN
+    // ============================================================================
+    function renderMapelMenu(container) {
+        container.innerHTML = `
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
+                <div class="lg:col-span-4 bg-white rounded-2xl p-5 shadow-sm border border-slate-200/80 h-fit">
+                    <h3 class="text-sm font-extrabold text-slate-900 mb-3 flex items-center gap-2">
+                        <i class="fa-solid fa-book-medical text-indigo-600"></i>
+                        <span>Input Mata Pelajaran Baru</span>
+                    </h3>
+                    <form onsubmit="window.app.saveSubject(event)" class="space-y-3">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1">Kode Mapel</label>
+                            <input type="text" id="mapel-code" required placeholder="contoh: BIO-SMP" class="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-mono uppercase">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1">Nama Mata Pelajaran</label>
+                            <input type="text" id="mapel-name" required placeholder="contoh: Ilmu Pengetahuan Alam (IPA)" class="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1">Standar KKM</label>
+                            <input type="number" id="mapel-kkm" required value="75" min="0" max="100" class="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs">
+                        </div>
+                        <button type="submit" class="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow transition">Simpan Mata Pelajaran</button>
+                    </form>
+                </div>
+
+                <div class="lg:col-span-8 bg-white rounded-2xl p-5 shadow-sm border border-slate-200/80">
+                    <h3 class="text-sm font-extrabold text-slate-900 mb-3">Daftar Mata Pelajaran Kurikulum</h3>
+                    <div class="overflow-x-auto rounded-xl border border-slate-200">
+                        <table class="w-full text-xs text-left">
+                            <thead class="bg-slate-100 text-slate-700 font-bold">
+                                <tr>
+                                    <th class="p-3 w-12 text-center">No</th>
+                                    <th class="p-3">Kode</th>
+                                    <th class="p-3">Nama Mata Pelajaran</th>
+                                    <th class="p-3 text-center">KKM</th>
+                                    <th class="p-3">Guru Pengampu</th>
+                                    <th class="p-3 text-center w-20">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100">
+                                ${state.db.subjects.map((s, i) => {
+                                    const teachersForSub = state.db.teachers.filter(t => getTeacherSubjectIds(t).includes(String(s.id)));
+                                    return `
+                                        <tr class="hover:bg-slate-50">
+                                            <td class="p-3 text-center font-bold text-slate-500">${i + 1}</td>
+                                            <td class="p-3 font-mono font-bold text-indigo-600">${s.subject_code}</td>
+                                            <td class="p-3 font-extrabold text-slate-900">${s.subject_name}</td>
+                                            <td class="p-3 text-center"><span class="px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 font-bold">${s.kkm}</span></td>
+                                            <td class="p-3">
+                                                ${teachersForSub.map(t => `<span class="inline-block px-2 py-0.5 rounded bg-slate-100 text-slate-700 text-[10px] font-bold mr-1 mb-1">${t.full_name}</span>`).join('') || '<span class="text-slate-400 italic text-[10px]">Belum ada guru</span>'}
+                                            </td>
+                                            <td class="p-3 text-center">
+                                                <button type="button" onclick="window.app.deleteSubject('${s.id}')" class="p-1.5 rounded-lg bg-rose-50 text-rose-600 hover:bg-rose-600 hover:text-white transition"><i class="fa-solid fa-trash"></i></button>
+                                            </td>
+                                        </tr>
+                                    `;
+                                }).join('') || `<tr><td colspan="6" class="text-center py-6 text-slate-400">Belum ada mata pelajaran.</td></tr>`}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    async function saveSubject(e) {
+        e.preventDefault();
+        const code = document.getElementById('mapel-code').value.trim().toUpperCase();
+        const name = document.getElementById('mapel-name').value.trim();
+        const kkm = parseFloat(document.getElementById('mapel-kkm').value) || 75;
+
+        const payload = { id: `sub-${Date.now()}`, subject_code: code, subject_name: name, kkm };
+        state.db.subjects.push(payload);
+
+        if (!IS_PREVIEW && supabase) {
+            await supabase.from('subjects').upsert([payload]);
+        }
+
+        syncAllUI();
+        showToast(`Mata pelajaran ${name} berhasil ditambahkan!`);
+    }
+
+    function deleteSubject(id) {
+        showConfirmModal('Hapus Mata Pelajaran', 'Yakin ingin menghapus mata pelajaran ini?', async () => {
+            state.db.subjects = state.db.subjects.filter(s => String(s.id) !== String(id));
+            if (!IS_PREVIEW && supabase) {
+                await supabase.from('subjects').delete().eq('id', id);
+            }
+            syncAllUI();
+            showToast('Mata pelajaran berhasil dihapus.');
+        });
+    }
+
+    // ============================================================================
+    // MENU 5: JURNAL MENGAJAR GURU (TANPA KEGIATAN & CATATAN KEJADIAN PENTING)
+    // ============================================================================
+    function renderJurnalMenu(container) {
+        const isGuru = state.currentUser.role === 'guru';
+        const teacherRec = getCurrentTeacherRecord();
+        const journals = state.db.journals.filter(j => matchesActiveFilters(j));
+
+        const teacherOptions = isGuru && teacherRec ? [teacherRec] : state.db.teachers;
+        const allowedSubjectIds = isGuru && teacherRec ? getTeacherSubjectIds(teacherRec) : state.db.subjects.map(s => s.id);
+        const subjectOptions = state.db.subjects.filter(s => allowedSubjectIds.includes(String(s.id)));
+        const classOptions = isGuru && teacherRec
+            ? state.db.classes.filter(c => (teacherRec.assigned_classes || []).includes(c.id))
+            : state.db.classes;
+
+        const today = new Date().toISOString().split('T')[0];
+
+        container.innerHTML = `
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
+                <div class="lg:col-span-4 bg-white rounded-2xl p-5 shadow-sm border border-slate-200/80 h-fit">
+                    <h3 class="text-sm font-extrabold text-slate-900 mb-3 flex items-center gap-2">
+                        <i class="fa-solid fa-book-open-reader text-amber-500"></i>
+                        <span>Input Jurnal Mengajar Harian</span>
+                    </h3>
+                    <form onsubmit="window.app.saveJournal(event)" class="space-y-3">
+                        <div class="grid grid-cols-2 gap-2">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 mb-1">Tanggal</label>
+                                <input type="date" id="jurnal-date" required value="${today}" class="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 mb-1">Jam Mengajar Ke-</label>
+                                <input type="text" id="jurnal-hours" required placeholder="1 - 2 (07:30 - 09:00)" class="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1">Guru Pengampu</label>
+                            <select id="jurnal-teacher" ${isGuru ? 'disabled' : ''} class="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs bg-slate-50 font-bold">
+                                ${teacherOptions.map(t => `<option value="${t.id}">${t.full_name}</option>`).join('')}
+                            </select>
+                        </div>
+                        <div class="grid grid-cols-2 gap-2">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 mb-1">Mata Pelajaran</label>
+                                <select id="jurnal-subject" class="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs bg-white font-bold">
+                                    ${subjectOptions.map(s => `<option value="${s.id}">${s.subject_name}</option>`).join('')}
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 mb-1">Kelas</label>
+                                <select id="jurnal-class" class="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs bg-white font-bold">
+                                    ${classOptions.map(c => `<option value="${c.id}">${c.class_name}</option>`).join('')}
+                                </select>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1">Materi Pokok / Kompetensi Dasar</label>
+                            <input type="text" id="jurnal-topic" required placeholder="Masukkan materi pokok pembelajaran..." class="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs">
+                        </div>
+                        <div class="grid grid-cols-2 gap-2">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 mb-1">Jml Siswa Hadir</label>
+                                <input type="number" id="jurnal-present" required value="25" min="0" class="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 mb-1">Tidak Hadir</label>
+                                <input type="number" id="jurnal-absent" required value="0" min="0" class="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs">
+                            </div>
+                        </div>
+                        <button type="submit" class="w-full py-2.5 bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs rounded-xl shadow transition">Simpan Jurnal Mengajar</button>
+                    </form>
+                </div>
+
+                <div class="lg:col-span-8 bg-white rounded-2xl p-5 shadow-sm border border-slate-200/80">
+                    <h3 class="text-sm font-extrabold text-slate-900 mb-3">Rekapitulasi Jurnal Mengajar Guru</h3>
+                    <div class="overflow-x-auto rounded-xl border border-slate-200">
+                        <table class="w-full text-xs text-left">
+                            <thead class="bg-slate-100 text-slate-700 font-bold">
+                                <tr>
+                                    <th class="p-3 w-10 text-center">No</th>
+                                    <th class="p-3">Tanggal &amp; Jam</th>
+                                    <th class="p-3">Guru &amp; Mapel</th>
+                                    <th class="p-3">Kelas</th>
+                                    <th class="p-3">Materi Pokok Pembelajaran</th>
+                                    <th class="p-3 text-center">Kehadiran</th>
+                                    <th class="p-3 text-center w-14">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100">
+                                ${journals.map((j, i) => `
+                                    <tr class="hover:bg-slate-50">
+                                        <td class="p-3 text-center font-bold text-slate-500">${i + 1}</td>
+                                        <td class="p-3">
+                                            <p class="font-bold text-slate-800">${j.date}</p>
+                                            <p class="text-[10px] text-slate-500">Jam ke: ${j.teaching_hours}</p>
+                                        </td>
+                                        <td class="p-3">
+                                            <p class="font-extrabold text-slate-900">${getTeacherName(j.teacher_id)}</p>
+                                            <p class="text-[10px] font-bold text-indigo-600">${getSubjectName(j.subject_id)}</p>
+                                        </td>
+                                        <td class="p-3"><span class="px-2 py-0.5 rounded bg-blue-50 text-blue-700 font-bold text-[10px]">${getClassName(j.class_id)}</span></td>
+                                        <td class="p-3 font-medium text-slate-800">${j.topic}</td>
+                                        <td class="p-3 text-center">
+                                            <span class="px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 font-bold text-[10px]">H: ${j.present_count}</span>
+                                            <span class="px-2 py-0.5 rounded bg-rose-50 text-rose-700 font-bold text-[10px] ml-1">TH: ${j.absent_count}</span>
+                                        </td>
+                                        <td class="p-3 text-center">
+                                            <button type="button" onclick="window.app.deleteJournal('${j.id}')" class="p-1.5 rounded-lg bg-rose-50 text-rose-600 hover:bg-rose-600 hover:text-white transition"><i class="fa-solid fa-trash"></i></button>
+                                        </td>
+                                    </tr>
+                                `).join('') || `<tr><td colspan="7" class="text-center py-6 text-slate-400">Belum ada jurnal mengajar tercatat.</td></tr>`}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    async function saveJournal(e) {
+        e.preventDefault();
+        const teacherId = document.getElementById('jurnal-teacher').value;
+        const subjectId = document.getElementById('jurnal-subject').value;
+        const classId = document.getElementById('jurnal-class').value;
+        const date = document.getElementById('jurnal-date').value;
+        const hours = document.getElementById('jurnal-hours').value.trim();
+        const topic = document.getElementById('jurnal-topic').value.trim();
+        const present = parseInt(document.getElementById('jurnal-present').value) || 0;
+        const absent = parseInt(document.getElementById('jurnal-absent').value) || 0;
+
+        if (!teacherId || !subjectId || !classId) {
+            showToast('Pastikan data Guru, Mapel, dan Kelas sudah dipilih!', 'error');
+            return;
+        }
+
+        const payload = {
+            id: `jur-${Date.now()}`,
+            date,
+            teacher_id: teacherId,
+            subject_id: subjectId,
+            class_id: classId,
+            teaching_hours: hours,
+            topic,
+            activity: '',
+            present_count: present,
+            absent_count: absent,
+            notes: ''
+        };
+
+        state.db.journals.unshift(payload);
+        if (!IS_PREVIEW && supabase) {
+            await supabase.from('journals').upsert([payload]);
+        }
+
+        syncAllUI();
+        showToast('Jurnal mengajar berhasil disimpan!');
+    }
+
+    function deleteJournal(id) {
+        showConfirmModal('Hapus Jurnal', 'Yakin ingin menghapus catatan jurnal ini?', async () => {
+            state.db.journals = state.db.journals.filter(j => String(j.id) !== String(id));
+            if (!IS_PREVIEW && supabase) {
+                await supabase.from('journals').delete().eq('id', id);
+            }
+            syncAllUI();
+            showToast('Jurnal berhasil dihapus.');
+        });
+    }
+
+    // ============================================================================
+    // MENU 6: JADWAL MENGAJAR GURU
+    // ============================================================================
+    function renderJadwalMenu(container) {
+        const isGuru = state.currentUser.role === 'guru';
+        const teacherRec = getCurrentTeacherRecord();
+        const schedules = state.db.schedules.filter(sc => matchesActiveFilters(sc));
+
+        const teacherOptions = isGuru && teacherRec ? [teacherRec] : state.db.teachers;
+        const allowedSubjectIds = isGuru && teacherRec ? getTeacherSubjectIds(teacherRec) : state.db.subjects.map(s => s.id);
+        const subjectOptions = state.db.subjects.filter(s => allowedSubjectIds.includes(String(s.id)));
+        const classOptions = isGuru && teacherRec
+            ? state.db.classes.filter(c => (teacherRec.assigned_classes || []).includes(c.id))
+            : state.db.classes;
+
+        container.innerHTML = `
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
+                <div class="lg:col-span-4 bg-white rounded-2xl p-5 shadow-sm border border-slate-200/80 h-fit">
+                    <h3 class="text-sm font-extrabold text-slate-900 mb-3 flex items-center gap-2">
+                        <i class="fa-solid fa-calendar-plus text-sky-600"></i>
+                        <span>Tambah Jadwal Mengajar</span>
+                    </h3>
+                    <form onsubmit="window.app.saveSchedule(event)" class="space-y-3">
+                        <div class="grid grid-cols-2 gap-2">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 mb-1">Hari</label>
+                                <select id="jadwal-day" class="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs bg-white font-bold">
+                                    <option value="Senin">Senin</option>
+                                    <option value="Selasa">Selasa</option>
+                                    <option value="Rabu">Rabu</option>
+                                    <option value="Kamis">Kamis</option>
+                                    <option value="Jumat">Jumat</option>
+                                    <option value="Sabtu">Sabtu</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 mb-1">Ruangan</label>
+                                <input type="text" id="jadwal-room" required placeholder="R. Kelas VII-A" class="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs">
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-2">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 mb-1">Jam Mulai</label>
+                                <input type="time" id="jadwal-start" required value="07:30" class="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 mb-1">Jam Selesai</label>
+                                <input type="time" id="jadwal-end" required value="09:00" class="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1">Guru Pengampu</label>
+                            <select id="jadwal-teacher" ${isGuru ? 'disabled' : ''} class="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs bg-slate-50 font-bold">
+                                ${teacherOptions.map(t => `<option value="${t.id}">${t.full_name}</option>`).join('')}
+                            </select>
+                        </div>
+                        <div class="grid grid-cols-2 gap-2">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 mb-1">Mata Pelajaran</label>
+                                <select id="jadwal-subject" class="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs bg-white font-bold">
+                                    ${subjectOptions.map(s => `<option value="${s.id}">${s.subject_name}</option>`).join('')}
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 mb-1">Kelas</label>
+                                <select id="jadwal-class" class="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs bg-white font-bold">
+                                    ${classOptions.map(c => `<option value="${c.id}">${c.class_name}</option>`).join('')}
+                                </select>
+                            </div>
+                        </div>
+                        <button type="submit" class="w-full py-2.5 bg-sky-600 hover:bg-sky-700 text-white font-bold text-xs rounded-xl shadow transition">Simpan Jadwal</button>
+                    </form>
+                </div>
+
+                <div class="lg:col-span-8 bg-white rounded-2xl p-5 shadow-sm border border-slate-200/80">
+                    <h3 class="text-sm font-extrabold text-slate-900 mb-3">Daftar Jadwal Mengajar Aktif</h3>
+                    <div class="overflow-x-auto rounded-xl border border-slate-200">
+                        <table class="w-full text-xs text-left">
+                            <thead class="bg-slate-100 text-slate-700 font-bold">
+                                <tr>
+                                    <th class="p-3 w-10 text-center">No</th>
+                                    <th class="p-3">Hari &amp; Waktu</th>
+                                    <th class="p-3">Mata Pelajaran</th>
+                                    <th class="p-3">Guru Pengampu</th>
+                                    <th class="p-3">Kelas &amp; Ruangan</th>
+                                    <th class="p-3 text-center w-14">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100">
+                                ${schedules.map((sc, i) => `
+                                    <tr class="hover:bg-slate-50">
+                                        <td class="p-3 text-center font-bold text-slate-500">${i + 1}</td>
+                                        <td class="p-3">
+                                            <span class="font-extrabold text-indigo-700">${sc.day_of_week}</span>
+                                            <p class="text-[10px] text-slate-500">${sc.start_time} - ${sc.end_time}</p>
+                                        </td>
+                                        <td class="p-3 font-extrabold text-slate-900">${getSubjectName(sc.subject_id)}</td>
+                                        <td class="p-3 font-semibold text-slate-700">${getTeacherName(sc.teacher_id)}</td>
+                                        <td class="p-3">
+                                            <span class="px-2 py-0.5 rounded bg-blue-50 text-blue-700 font-bold text-[10px]">${getClassName(sc.class_id)}</span>
+                                            <span class="text-[10px] text-slate-500 ml-1">(${sc.room})</span>
+                                        </td>
+                                        <td class="p-3 text-center">
+                                            <button type="button" onclick="window.app.deleteSchedule('${sc.id}')" class="p-1.5 rounded-lg bg-rose-50 text-rose-600 hover:bg-rose-600 hover:text-white transition"><i class="fa-solid fa-trash"></i></button>
+                                        </td>
+                                    </tr>
+                                `).join('') || `<tr><td colspan="6" class="text-center py-6 text-slate-400">Belum ada jadwal mengajar.</td></tr>`}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    async function saveSchedule(e) {
+        e.preventDefault();
+        const day = document.getElementById('jadwal-day').value;
+        const room = document.getElementById('jadwal-room').value.trim();
+        const start = document.getElementById('jadwal-start').value;
+        const end = document.getElementById('jadwal-end').value;
+        const teacherId = document.getElementById('jadwal-teacher').value;
+        const subjectId = document.getElementById('jadwal-subject').value;
+        const classId = document.getElementById('jadwal-class').value;
+
+        if (!teacherId || !subjectId || !classId) {
+            showToast('Pastikan Guru, Mapel, dan Kelas sudah dipilih!', 'error');
+            return;
+        }
+
+        const payload = {
+            id: `sch-${Date.now()}`,
+            day_of_week: day,
+            start_time: start,
+            end_time: end,
+            room,
+            teacher_id: teacherId,
+            subject_id: subjectId,
+            class_id: classId
+        };
+
+        state.db.schedules.push(payload);
+        if (!IS_PREVIEW && supabase) {
+            await supabase.from('schedules').upsert([payload]);
+        }
+
+        syncAllUI();
+        showToast('Jadwal mengajar berhasil disimpan!');
+    }
+
+    function deleteSchedule(id) {
+        showConfirmModal('Hapus Jadwal', 'Yakin ingin menghapus jadwal ini?', async () => {
+            state.db.schedules = state.db.schedules.filter(s => String(s.id) !== String(id));
+            if (!IS_PREVIEW && supabase) {
+                await supabase.from('schedules').delete().eq('id', id);
+            }
+            syncAllUI();
+            showToast('Jadwal berhasil dihapus.');
+        });
+    }
+
+    // ============================================================================
+    // MENU 7: ABSENSI SISWA
+    // ============================================================================
+    function renderAbsensiMenu(container) {
+        const isGuru = state.currentUser.role === 'guru';
+        const teacherRec = getCurrentTeacherRecord();
+        const allowedClasses = isGuru && teacherRec
+            ? state.db.classes.filter(c => (teacherRec.assigned_classes || []).includes(c.id))
+            : state.db.classes;
+
+        const selectedClassId = (state.filters.classId !== 'ALL' && allowedClasses.some(c => String(c.id) === String(state.filters.classId)))
+            ? state.filters.classId
+            : (allowedClasses[0]?.id || '');
+
+        const allowedSubjectIds = isGuru && teacherRec ? getTeacherSubjectIds(teacherRec) : state.db.subjects.map(s => s.id);
+        const subjectOptions = state.db.subjects.filter(s => allowedSubjectIds.includes(String(s.id)));
+        const selectedSubjectId = (state.filters.subjectId !== 'ALL' && subjectOptions.some(s => String(s.id) === String(state.filters.subjectId)))
+            ? state.filters.subjectId
+            : (subjectOptions[0]?.id || '');
+
+        const studentsInClass = state.db.students.filter(s => String(s.class_id) === String(selectedClassId));
+        const today = new Date().toISOString().split('T')[0];
+
+        container.innerHTML = `
+            <div class="space-y-4">
+                <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200/80">
+                    <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+                        <div class="flex flex-wrap items-center gap-3">
+                            <div>
+                                <label class="block text-[10px] font-bold text-slate-500 uppercase">Pilih Kelas</label>
+                                <select id="absen-class" onchange="window.app.applyGlobalFilters('class', this.value)" class="px-3 py-2 rounded-xl border border-slate-200 text-xs font-extrabold bg-white">
+                                    ${allowedClasses.map(c => `<option value="${c.id}" ${String(c.id) === String(selectedClassId) ? 'selected' : ''}>${c.class_name}</option>`).join('') || '<option value="">Belum Ada Kelas</option>'}
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-bold text-slate-500 uppercase">Mata Pelajaran</label>
+                                <select id="absen-subject" onchange="window.app.applyGlobalFilters('subject', this.value)" class="px-3 py-2 rounded-xl border border-slate-200 text-xs font-extrabold bg-white">
+                                    ${subjectOptions.map(s => `<option value="${s.id}" ${String(s.id) === String(selectedSubjectId) ? 'selected' : ''}>${s.subject_name}</option>`).join('') || '<option value="">Belum Ada Mapel</option>'}
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-bold text-slate-500 uppercase">Tanggal Pertemuan</label>
+                                <input type="date" id="absen-date" value="${today}" class="px-3 py-2 rounded-xl border border-slate-200 text-xs font-bold">
+                            </div>
+                        </div>
+                        <div class="flex gap-2">
+                            <button type="button" onclick="window.app.setAllAttendanceStatus('Hadir')" class="px-3.5 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold text-xs border border-emerald-200 transition">
+                                <i class="fa-solid fa-check-double mr-1"></i>Set Semua Hadir
+                            </button>
+                            <button type="button" onclick="window.app.saveBulkAttendance()" class="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow transition">
+                                <i class="fa-solid fa-floppy-disk mr-1"></i>Simpan Presensi
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="overflow-x-auto rounded-xl border border-slate-200">
+                        <table class="w-full text-xs text-left">
+                            <thead class="bg-slate-100 text-slate-700 font-bold">
+                                <tr>
+                                    <th class="p-3 w-12 text-center">No</th>
+                                    <th class="p-3">NISN</th>
+                                    <th class="p-3">Nama Lengkap Siswa</th>
+                                    <th class="p-3 text-center">Status Kehadiran</th>
+                                    <th class="p-3">Keterangan</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100">
+                                ${studentsInClass.map((s, idx) => `
+                                    <tr class="hover:bg-slate-50" data-student-row="${s.id}">
+                                        <td class="p-3 text-center font-bold text-slate-500">${idx + 1}</td>
+                                        <td class="p-3 font-mono text-slate-600">${s.nisn}</td>
+                                        <td class="p-3 font-extrabold text-slate-900">${s.student_name}</td>
+                                        <td class="p-3 text-center">
+                                            <div class="inline-flex gap-2">
+                                                ${['Hadir', 'Izin', 'Sakit', 'Alpa'].map(st => `
+                                                    <label class="inline-flex items-center gap-1 cursor-pointer text-[11px] font-bold">
+                                                        <input type="radio" name="att-status-${s.id}" value="${st}" ${st === 'Hadir' ? 'checked' : ''} class="text-blue-600">
+                                                        <span>${st}</span>
+                                                    </label>
+                                                `).join('')}
+                                            </div>
+                                        </td>
+                                        <td class="p-3">
+                                            <input type="text" id="att-remark-${s.id}" placeholder="Catatan opsional..." class="w-full px-2.5 py-1 rounded-lg border border-slate-200 text-xs">
+                                        </td>
+                                    </tr>
+                                `).join('') || `<tr><td colspan="5" class="text-center py-8 text-slate-400">Belum ada siswa pada kelas ini.</td></tr>`}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    function setAllAttendanceStatus(status) {
+        document.querySelectorAll(`input[type="radio"][value="${status}"]`).forEach(r => r.checked = true);
+    }
+
+    async function saveBulkAttendance() {
+        const classId = document.getElementById('absen-class')?.value;
+        const subjectId = document.getElementById('absen-subject')?.value;
+        const date = document.getElementById('absen-date')?.value;
+        if (!classId || !subjectId) {
+            showToast('Pilih kelas dan mata pelajaran terlebih dahulu!', 'error');
+            return;
+        }
+
+        const teacherId = state.currentUser.role === 'guru'
+            ? state.currentUser.id
+            : (state.db.teachers[0]?.id || 'admin');
+
+        const studentsInClass = state.db.students.filter(s => String(s.class_id) === String(classId));
+        const payloads = studentsInClass.map((s, idx) => {
+            const checkedRadio = document.querySelector(`input[name="att-status-${s.id}"]:checked`);
+            const status = checkedRadio ? checkedRadio.value : 'Hadir';
+            const remarks = document.getElementById(`att-remark-${s.id}`)?.value.trim() || '';
+            return {
+                id: `att-${Date.now()}-${idx}`,
+                date,
+                teacher_id: teacherId,
+                subject_id: subjectId,
+                class_id: classId,
+                student_id: s.id,
+                status,
+                remarks
+            };
+        });
+
+        state.db.attendances.push(...payloads);
+        if (!IS_PREVIEW && supabase && payloads.length > 0) {
+            await supabase.from('attendances').upsert(payloads);
+        }
+
+        syncAllUI();
+        showToast(`Rekap absensi ${payloads.length} siswa berhasil disimpan!`);
+    }
+
+    // ============================================================================
+    // MENU 8: PENILAIAN SISWA (SPREADSHEET MATRIKS SESUAI GAMBAR REFERENSI)
+    // ============================================================================
+    function renderPenilaianMenu(container) {
+        const isGuru = state.currentUser.role === 'guru';
+        const teacherRec = getCurrentTeacherRecord();
+        const allowedClasses = isGuru && teacherRec
+            ? state.db.classes.filter(c => (teacherRec.assigned_classes || []).includes(c.id))
+            : state.db.classes;
+
+        const selectedClassId = (state.filters.classId !== 'ALL' && allowedClasses.some(c => String(c.id) === String(state.filters.classId)))
+            ? state.filters.classId
+            : (allowedClasses[0]?.id || '');
+
+        const allowedSubjectIds = isGuru && teacherRec ? getTeacherSubjectIds(teacherRec) : state.db.subjects.map(s => s.id);
+        const subjectOptions = state.db.subjects.filter(s => allowedSubjectIds.includes(String(s.id)));
+        const selectedSubjectId = (state.filters.subjectId !== 'ALL' && subjectOptions.some(s => String(s.id) === String(state.filters.subjectId)))
+            ? state.filters.subjectId
+            : (subjectOptions[0]?.id || '');
+
+        const studentsInClass = state.db.students.filter(s => String(s.class_id) === String(selectedClassId));
+        const { viewMode, tpCount, tugasCount, uhCount } = state.gradeConfig;
+
+        const showTugas = viewMode === 'all' || viewMode === 'tugas';
+        const showUh = viewMode === 'all' || viewMode === 'uh';
+        const showTp = viewMode === 'all' || viewMode === 'tp';
+
+        container.innerHTML = `
+            <div class="space-y-4">
+                <!-- Control Card matching Screenshot Reference -->
+                <div class="bg-white rounded-3xl p-5 sm:p-6 shadow-sm border border-slate-200/80">
+                    <div class="flex flex-wrap items-end gap-4 mb-5">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-600 mb-1.5">Pilih Kelas</label>
+                            <select onchange="window.app.changeGradeClass(this.value)" class="px-4 py-2.5 rounded-2xl border border-slate-200 text-sm font-bold text-slate-900 bg-white min-w-[160px] focus:outline-none focus:ring-2 focus:ring-violet-400">
+                                ${allowedClasses.map(c => `<option value="${c.id}" ${String(c.id) === String(selectedClassId) ? 'selected' : ''}>${c.class_name}</option>`).join('') || '<option value="">Belum Ada Kelas</option>'}
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-bold text-slate-600 mb-1.5">Mata Pelajaran</label>
+                            <select onchange="window.app.applyGlobalFilters('subject', this.value)" class="px-4 py-2.5 rounded-2xl border border-slate-200 text-sm font-bold text-slate-900 bg-white min-w-[180px] focus:outline-none focus:ring-2 focus:ring-violet-400">
+                                ${subjectOptions.map(s => `<option value="${s.id}" ${String(s.id) === String(selectedSubjectId) ? 'selected' : ''}>${s.subject_name}</option>`).join('') || '<option value="">Belum Ada Mapel</option>'}
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-bold text-slate-600 mb-1.5">Tampilan Kolom</label>
+                            <select onchange="window.app.changeGradeViewMode(this.value)" class="px-4 py-2.5 rounded-2xl border border-slate-200 text-sm font-bold text-slate-900 bg-white min-w-[260px] focus:outline-none focus:ring-2 focus:ring-violet-400">
+                                <option value="all" ${viewMode === 'all' ? 'selected' : ''}>Semua Kolom (Tugas + UH + TP)</option>
+                                <option value="tugas" ${viewMode === 'tugas' ? 'selected' : ''}>Khusus Tugas (1 s/d N)</option>
+                                <option value="uh" ${viewMode === 'uh' ? 'selected' : ''}>Khusus Ulangan Harian (1 s/d N)</option>
+                                <option value="tp" ${viewMode === 'tp' ? 'selected' : ''}>Khusus Nilai TP (1, 2, 3, 4, 5, 6, dst.)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Dynamic Pill Counters & Simpan Nilai Button -->
+                    <div class="flex flex-wrap items-center gap-3 pb-4 border-b border-slate-100">
+                        <div class="inline-flex items-center gap-2.5 bg-violet-100/80 px-2.5 py-1.5 rounded-full">
+                            <button type="button" onclick="window.app.adjustMatrixColumnCount('tp', -1)" class="w-7 h-7 rounded-full bg-white text-slate-700 font-bold shadow-sm hover:bg-slate-50">-</button>
+                            <span class="text-xs font-extrabold text-slate-800 px-1">TP: ${tpCount} Kolom</span>
+                            <button type="button" onclick="window.app.adjustMatrixColumnCount('tp', 1)" class="w-7 h-7 rounded-full bg-violet-500 text-white font-bold shadow-sm hover:bg-violet-600">+</button>
+                        </div>
+
+                        <div class="inline-flex items-center gap-2.5 bg-rose-100/70 px-2.5 py-1.5 rounded-full">
+                            <button type="button" onclick="window.app.adjustMatrixColumnCount('tugas', -1)" class="w-7 h-7 rounded-full bg-white text-slate-700 font-bold shadow-sm hover:bg-slate-50">-</button>
+                            <span class="text-xs font-extrabold text-slate-800 px-1">Tugas: ${tugasCount}</span>
+                            <button type="button" onclick="window.app.adjustMatrixColumnCount('tugas', 1)" class="w-7 h-7 rounded-full bg-rose-400 text-white font-bold shadow-sm hover:bg-rose-500">+</button>
+                        </div>
+
+                        <div class="inline-flex items-center gap-2.5 bg-amber-100/70 px-2.5 py-1.5 rounded-full">
+                            <button type="button" onclick="window.app.adjustMatrixColumnCount('uh', -1)" class="w-7 h-7 rounded-full bg-white text-slate-700 font-bold shadow-sm hover:bg-slate-50">-</button>
+                            <span class="text-xs font-extrabold text-slate-800 px-1">UH: ${uhCount}</span>
+                            <button type="button" onclick="window.app.adjustMatrixColumnCount('uh', 1)" class="w-7 h-7 rounded-full bg-amber-500 text-white font-bold shadow-sm hover:bg-amber-600">+</button>
+                        </div>
+
+                        <button type="button" onclick="window.app.saveAllMatrixGrades()" class="px-6 py-2.5 rounded-full bg-gradient-to-r from-violet-500 to-indigo-600 hover:from-violet-600 hover:to-indigo-700 text-white font-extrabold text-xs shadow-lg shadow-violet-500/30 flex items-center gap-2 transition">
+                            <i class="fa-regular fa-floppy-disk"></i>
+                            <span>Simpan Nilai</span>
+                        </button>
+                    </div>
+
+                    <p class="text-[11px] text-slate-500 mt-3">
+                        <span class="font-bold text-slate-700">💡 Petunjuk:</span> Ketik angka nilai (0–100) langsung pada kotak. Rata-rata Tugas, UH, TP, Nilai Akhir &amp; Predikat dihitung otomatis. Klik tombol + pada badge TP untuk menambah kolom TP 7, TP 8, dan seterusnya.
+                    </p>
+                </div>
+
+                <!-- Matrix Table Card matching Screenshot Reference -->
+                <div class="bg-white rounded-3xl p-4 sm:p-6 shadow-sm border border-slate-200/80 overflow-x-auto">
+                    <table class="w-full text-xs border-collapse min-w-[900px]">
+                        <thead>
+                            <tr>
+                                <th rowspan="2" class="p-3 bg-[#FAF8F5] text-slate-700 font-extrabold border border-slate-200/80 w-12 text-center">NO</th>
+                                <th rowspan="2" class="p-3 bg-[#FAF8F5] text-slate-700 font-extrabold border border-slate-200/80 text-left min-w-[180px]">NAMA SISWA</th>
+                                ${showTugas ? `<th colspan="${tugasCount + 1}" class="p-2.5 bg-[#EDE9FE] text-indigo-900 font-extrabold border border-slate-200/80 text-center uppercase tracking-wide">NILAI TUGAS (1 S/D ${tugasCount})</th>` : ''}
+                                ${showUh ? `<th colspan="${uhCount + 1}" class="p-2.5 bg-[#FCE7F3] text-rose-900 font-extrabold border border-slate-200/80 text-center uppercase tracking-wide">ULANGAN HARIAN (1 S/D ${uhCount})</th>` : ''}
+                                ${showTp ? `<th colspan="${tpCount + 1}" class="p-2.5 bg-[#FEF3C7] text-amber-900 font-extrabold border border-slate-200/80 text-center uppercase tracking-wide">NILAI TUJUAN PEMBELAJARAN (TP 1 S/D ${tpCount})</th>` : ''}
+                                <th rowspan="2" class="p-2.5 bg-[#E0E7FF] text-slate-800 font-extrabold border border-slate-200/80 text-center w-20">NILAI<br>AKHIR</th>
+                                <th rowspan="2" class="p-2.5 bg-[#E0E7FF] text-slate-800 font-extrabold border border-slate-200/80 text-center w-20">PREDIKAT</th>
+                            </tr>
+                            <tr>
+                                ${showTugas ? Array.from({ length: tugasCount }, (_, i) => `<th class="p-2 bg-[#F5F3FF] text-slate-700 font-bold border border-slate-200/80 text-center">T${i + 1}</th>`).join('') + `<th class="p-2 bg-[#EDE9FE] text-indigo-800 font-extrabold border border-slate-200/80 text-center">Rata</th>` : ''}
+                                ${showUh ? Array.from({ length: uhCount }, (_, i) => `<th class="p-2 bg-[#FDF2F8] text-slate-700 font-bold border border-slate-200/80 text-center">UH${i + 1}</th>`).join('') + `<th class="p-2 bg-[#FCE7F3] text-rose-800 font-extrabold border border-slate-200/80 text-center">Rata</th>` : ''}
+                                ${showTp ? Array.from({ length: tpCount }, (_, i) => `<th class="p-2 bg-[#FFFBEB] text-slate-700 font-bold border border-slate-200/80 text-center">TP${i + 1}</th>`).join('') + `<th class="p-2 bg-[#FEF3C7] text-amber-800 font-extrabold border border-slate-200/80 text-center">Rata</th>` : ''}
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100">
+                            ${studentsInClass.map((stu, idx) => {
+                                const rec = getStudentMatrixGrade(stu.id, selectedClassId, selectedSubjectId);
+                                return `
+                                    <tr class="hover:bg-slate-50/80">
+                                        <td class="p-3 text-center font-bold text-slate-500 border border-slate-100">${idx + 1}</td>
+                                        <td class="p-3 border border-slate-100">
+                                            <p class="font-extrabold text-slate-800 uppercase">${stu.student_name}</p>
+                                            <p class="text-[10px] text-slate-400 font-semibold">NIS: ${stu.nisn}</p>
+                                        </td>
+                                        ${showTugas ? Array.from({ length: tugasCount }, (_, i) => {
+                                            const val = rec.tugas_scores[i] !== undefined && rec.tugas_scores[i] !== '' && rec.tugas_scores[i] !== 0 ? rec.tugas_scores[i] : '';
+                                            return `<td class="p-1.5 border border-slate-100 text-center">
+                                                <input type="number" min="0" max="100" value="${val}"
+                                                    oninput="window.app.handleMatrixCellInput('${stu.id}', 'tugas', ${i}, this.value)"
+                                                    class="w-14 h-9 text-center font-bold text-slate-800 bg-white rounded-xl border border-slate-200 focus:border-violet-500 focus:ring-2 focus:ring-violet-200 outline-none">
+                                            </td>`;
+                                        }).join('') + `<td id="avg-tugas-${stu.id}" class="p-2 bg-[#F5F3FF]/60 text-center font-extrabold text-indigo-700 border border-slate-100">${rec.tugas_score.toFixed(1)}</td>` : ''}
+
+                                        ${showUh ? Array.from({ length: uhCount }, (_, i) => {
+                                            const val = rec.uh_scores[i] !== undefined && rec.uh_scores[i] !== '' && rec.uh_scores[i] !== 0 ? rec.uh_scores[i] : '';
+                                            return `<td class="p-1.5 border border-slate-100 text-center">
+                                                <input type="number" min="0" max="100" value="${val}"
+                                                    oninput="window.app.handleMatrixCellInput('${stu.id}', 'uh', ${i}, this.value)"
+                                                    class="w-14 h-9 text-center font-bold text-slate-800 bg-white rounded-xl border border-slate-200 focus:border-rose-400 focus:ring-2 focus:ring-rose-200 outline-none">
+                                            </td>`;
+                                        }).join('') + `<td id="avg-uh-${stu.id}" class="p-2 bg-[#FDF2F8]/60 text-center font-extrabold text-rose-800 border border-slate-100">${rec.uh_score.toFixed(1)}</td>` : ''}
+
+                                        ${showTp ? Array.from({ length: tpCount }, (_, i) => {
+                                            const val = rec.tp_scores[i] !== undefined && rec.tp_scores[i] !== '' && rec.tp_scores[i] !== 0 ? rec.tp_scores[i] : '';
+                                            return `<td class="p-1.5 border border-slate-100 text-center">
+                                                <input type="number" min="0" max="100" value="${val}"
+                                                    oninput="window.app.handleMatrixCellInput('${stu.id}', 'tp', ${i}, this.value)"
+                                                    class="w-14 h-9 text-center font-bold text-slate-800 bg-white rounded-xl border border-slate-200 focus:border-amber-500 focus:ring-2 focus:ring-amber-200 outline-none">
+                                            </td>`;
+                                        }).join('') + `<td id="avg-tp-${stu.id}" class="p-2 bg-[#FFFBEB]/60 text-center font-extrabold text-amber-800 border border-slate-100">${rec.tp_score.toFixed(1)}</td>` : ''}
+
+                                        <td id="final-score-${stu.id}" class="p-2 bg-slate-50 text-center font-extrabold text-slate-800 border border-slate-100">${rec.final_score.toFixed(1)}</td>
+                                        <td id="predicate-${stu.id}" class="p-2 bg-slate-50 text-center font-extrabold text-slate-800 border border-slate-100">${rec.predicate}</td>
+                                    </tr>
+                                `;
+                            }).join('') || `<tr><td colspan="25" class="text-center py-8 text-slate-400 font-semibold">Belum ada siswa di kelas terpilih. Silakan tambahkan siswa pada menu Input Data Kelas.</td></tr>`}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        `;
+    }
+
+    function getStudentMatrixGrade(studentId, classId, subjectId) {
+        const key = `${studentId}_${classId}_${subjectId}`;
+        if (state.gradeConfig.drafts[key]) return state.gradeConfig.drafts[key];
+
+        const existing = state.db.grades.find(
+            g => String(g.student_id) === String(studentId) &&
+                 String(g.class_id) === String(classId) &&
+                 (subjectId ? String(g.subject_id) === String(subjectId) : true)
+        );
+
+        const record = {
+            student_id: studentId,
+            class_id: classId,
+            subject_id: subjectId,
+            tugas_scores: existing?.tugas_scores ? [...existing.tugas_scores] : [],
+            uh_scores: existing?.uh_scores ? [...existing.uh_scores] : [],
+            tp_scores: existing?.tp_scores ? [...existing.tp_scores] : [],
+            tugas_score: existing?.tugas_score || 0,
+            uh_score: existing?.uh_score || 0,
+            tp_score: existing?.tp_score || 0,
+            final_score: existing?.final_score || 0,
+            predicate: existing?.predicate || '-'
+        };
+
+        state.gradeConfig.drafts[key] = record;
+        return record;
+    }
+
+    function handleMatrixCellInput(studentId, group, colIdx, rawVal) {
+        const isGuru = state.currentUser.role === 'guru';
+        const teacherRec = getCurrentTeacherRecord();
+        const allowedClasses = isGuru && teacherRec
+            ? state.db.classes.filter(c => (teacherRec.assigned_classes || []).includes(c.id))
+            : state.db.classes;
+        const selectedClassId = (state.filters.classId !== 'ALL' && allowedClasses.some(c => String(c.id) === String(state.filters.classId)))
+            ? state.filters.classId
+            : (allowedClasses[0]?.id || '');
+
+        const allowedSubjectIds = isGuru && teacherRec ? getTeacherSubjectIds(teacherRec) : state.db.subjects.map(s => s.id);
+        const subjectOptions = state.db.subjects.filter(s => allowedSubjectIds.includes(String(s.id)));
+        const selectedSubjectId = (state.filters.subjectId !== 'ALL' && subjectOptions.some(s => String(s.id) === String(state.filters.subjectId)))
+            ? state.filters.subjectId
+            : (subjectOptions[0]?.id || '');
+
+        const rec = getStudentMatrixGrade(studentId, selectedClassId, selectedSubjectId);
+        const num = rawVal === '' ? '' : Math.min(100, Math.max(0, parseFloat(rawVal) || 0));
+
+        if (group === 'tugas') rec.tugas_scores[colIdx] = num;
+        if (group === 'uh') rec.uh_scores[colIdx] = num;
+        if (group === 'tp') rec.tp_scores[colIdx] = num;
+
+        rec.tugas_score = getAverage(rec.tugas_scores);
+        rec.uh_score = getAverage(rec.uh_scores);
+        rec.tp_score = getAverage(rec.tp_scores);
+
+        const activeAverages = [rec.tugas_score, rec.uh_score, rec.tp_score].filter(v => v > 0);
+        rec.final_score = activeAverages.length > 0
+            ? parseFloat((activeAverages.reduce((a, b) => a + b, 0) / activeAverages.length).toFixed(1))
+            : 0;
+        rec.predicate = calculatePredicate(rec.final_score);
+
+        const tEl = document.getElementById(`avg-tugas-${studentId}`);
+        const uEl = document.getElementById(`avg-uh-${studentId}`);
+        const tpEl = document.getElementById(`avg-tp-${studentId}`);
+        const fEl = document.getElementById(`final-score-${studentId}`);
+        const pEl = document.getElementById(`predicate-${studentId}`);
+
+        if (tEl) tEl.textContent = rec.tugas_score.toFixed(1);
+        if (uEl) uEl.textContent = rec.uh_score.toFixed(1);
+        if (tpEl) tpEl.textContent = rec.tp_score.toFixed(1);
+        if (fEl) fEl.textContent = rec.final_score.toFixed(1);
+        if (pEl) pEl.textContent = rec.predicate;
+    }
+
+    function changeGradeClass(classId) {
+        state.filters.classId = classId;
+        syncAllUI();
+    }
+
+    function changeGradeViewMode(mode) {
+        state.gradeConfig.viewMode = mode;
+        renderActiveMenu();
+    }
+
+    function adjustMatrixColumnCount(type, delta) {
+        if (type === 'tp') state.gradeConfig.tpCount = Math.max(1, state.gradeConfig.tpCount + delta);
+        if (type === 'tugas') state.gradeConfig.tugasCount = Math.max(1, state.gradeConfig.tugasCount + delta);
+        if (type === 'uh') state.gradeConfig.uhCount = Math.max(1, state.gradeConfig.uhCount + delta);
+        renderActiveMenu();
+    }
+
+    async function saveAllMatrixGrades() {
+        const isGuru = state.currentUser.role === 'guru';
+        const teacherRec = getCurrentTeacherRecord();
+        const allowedClasses = isGuru && teacherRec
+            ? state.db.classes.filter(c => (teacherRec.assigned_classes || []).includes(c.id))
+            : state.db.classes;
+        const selectedClassId = (state.filters.classId !== 'ALL' && allowedClasses.some(c => String(c.id) === String(state.filters.classId)))
+            ? state.filters.classId
+            : (allowedClasses[0]?.id || '');
+
+        const allowedSubjectIds = isGuru && teacherRec ? getTeacherSubjectIds(teacherRec) : state.db.subjects.map(s => s.id);
+        const subjectOptions = state.db.subjects.filter(s => allowedSubjectIds.includes(String(s.id)));
+        const selectedSubjectId = (state.filters.subjectId !== 'ALL' && subjectOptions.some(s => String(s.id) === String(state.filters.subjectId)))
+            ? state.filters.subjectId
+            : (subjectOptions[0]?.id || '');
+
+        if (!selectedClassId || !selectedSubjectId) {
+            showToast('Pilih Kelas dan Mata Pelajaran terlebih dahulu!', 'error');
+            return;
+        }
+
+        const teacherId = isGuru ? state.currentUser.id : (state.db.teachers[0]?.id || 'admin');
+        const studentsInClass = state.db.students.filter(s => String(s.class_id) === String(selectedClassId));
+        const upserted = [];
+
+        studentsInClass.forEach((stu, idx) => {
+            const rec = getStudentMatrixGrade(stu.id, selectedClassId, selectedSubjectId);
+            const existingIdx = state.db.grades.findIndex(
+                g => String(g.student_id) === String(stu.id) &&
+                     String(g.class_id) === String(selectedClassId) &&
+                     String(g.subject_id) === String(selectedSubjectId)
+            );
+
+            const payload = {
+                id: existingIdx > -1 ? state.db.grades[existingIdx].id : `grd-${Date.now()}-${idx}`,
+                teacher_id: teacherId,
+                subject_id: selectedSubjectId,
+                class_id: selectedClassId,
+                student_id: stu.id,
+                semester: 'Ganjil 2026/2027',
+                tugas_scores: rec.tugas_scores,
+                tugas_score: rec.tugas_score,
+                uh_scores: rec.uh_scores,
+                uh_score: rec.uh_score,
+                tp_scores: rec.tp_scores,
+                tp_score: rec.tp_score,
+                uts_score: 0,
+                uas_score: 0,
+                final_score: rec.final_score,
+                predicate: rec.predicate,
+                notes: ''
+            };
+
+            if (existingIdx > -1) {
+                state.db.grades[existingIdx] = payload;
+            } else {
+                state.db.grades.push(payload);
+            }
+            upserted.push(payload);
+        });
+
+        if (!IS_PREVIEW && supabase && upserted.length > 0) {
+            await supabase.from('grades').upsert(upserted);
+        }
+
+        showToast(`Data nilai ${upserted.length} siswa di kelas ${getClassName(selectedClassId)} berhasil disimpan!`);
+    }
+
+    // ============================================================================
+    // MENU 9: LAPORAN & CETAK PDF BER-KOP SEKOLAH
+    // ============================================================================
+    function renderLaporanMenu(container) {
+        const s = state.db.app_settings;
+        const rType = state.filters.reportType || 'jurnal';
+
+        container.innerHTML = `
+            <div class="space-y-4">
+                <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-200/80 flex flex-wrap items-center justify-between gap-3">
+                    <div class="flex flex-wrap gap-2">
+                        ${[
+                            { id: 'jurnal', label: 'Laporan Jurnal Mengajar', icon: 'fa-solid fa-book-open' },
+                            { id: 'jadwal', label: 'Laporan Jadwal Mengajar', icon: 'fa-solid fa-calendar-days' },
+                            { id: 'absensi', label: 'Rekap Absensi Siswa', icon: 'fa-solid fa-user-check' },
+                            { id: 'nilai', label: 'Rekap Penilaian Siswa', icon: 'fa-solid fa-star' }
+                        ].map(tab => `
+                            <button type="button" onclick="window.app.setReportType('${tab.id}')"
+                                class="px-4 py-2 rounded-xl text-xs font-bold transition ${
+                                    rType === tab.id ? 'bg-blue-600 text-white shadow' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                                }">
+                                <i class="${tab.icon} mr-1.5"></i>${tab.label}
+                            </button>
+                        `).join('')}
+                    </div>
+
+                    <div class="flex gap-2">
+                        <button type="button" onclick="window.app.exportReportToPDF()" class="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shadow transition">
+                            <i class="fa-solid fa-file-pdf mr-1.5"></i>Download PDF
+                        </button>
+                        <button type="button" onclick="window.print()" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs shadow transition">
+                            <i class="fa-solid fa-print mr-1.5"></i>Cetak Langsung
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Printable Document Sheet -->
+                <div class="bg-white rounded-2xl p-8 shadow-md border border-slate-200 max-w-5xl mx-auto" id="pdf-print-area">
+                    <!-- KOP SURAT RESMI -->
+                    <div class="flex items-center justify-between border-b-4 border-double border-slate-900 pb-4 mb-6 gap-4">
+                        <img src="${s.region_logo_url}" alt="Logo Daerah" class="w-16 h-16 object-contain shrink-0" onerror="this.style.display='none'">
+                        <div class="text-center flex-1">
+                            <p class="text-xs font-bold uppercase tracking-wider text-slate-800">${s.agency_name}</p>
+                            <h1 class="text-xl font-extrabold uppercase tracking-wide text-slate-950 mt-0.5">${s.school_name}</h1>
+                            <p class="text-[11px] text-slate-600 mt-1">${s.kop_address}</p>
+                        </div>
+                        <img src="${s.school_logo_url}" alt="Logo Sekolah" class="w-16 h-16 object-contain shrink-0" onerror="this.style.display='none'">
+                    </div>
+
+                    ${buildReportTableHTML(rType)}
+
+                    <!-- TANDA TANGAN KEPALA SEKOLAH & GURU -->
+                    <div class="grid grid-cols-2 gap-8 mt-10 text-xs text-slate-900">
+                        <div class="text-center">
+                            <p>Mengetahui,</p>
+                            <p class="font-bold">Kepala ${s.school_name}</p>
+                            <div class="h-16"></div>
+                            <p class="font-extrabold underline">${s.principal_name}</p>
+                            <p class="text-[11px]">NIP. ${s.principal_nip}</p>
+                        </div>
+                        <div class="text-center">
+                            <p>${new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+                            <p class="font-bold">${state.currentUser.role === 'guru' ? 'Guru Mata Pelajaran' : 'Koordinator Akademik'}</p>
+                            <div class="h-16"></div>
+                            <p class="font-extrabold underline">${state.currentUser.full_name}</p>
+                            <p class="text-[11px]">${state.currentUser.nip ? 'NIP. ' + state.currentUser.nip : ''}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    function setReportType(type) {
+        state.filters.reportType = type;
+        renderActiveMenu();
+    }
+
+    function buildReportTableHTML(type) {
+        if (type === 'jurnal') {
+            const list = state.db.journals.filter(j => matchesActiveFilters(j));
+            return `
+                <h2 class="text-center font-extrabold text-sm uppercase mb-4 underline">LAPORAN JURNAL MENGAJAR GURU</h2>
+                <table class="w-full text-xs border-collapse pdf-table">
+                    <thead class="bg-slate-100">
+                        <tr>
+                            <th>No</th><th>Tanggal</th><th>Jam Ke</th><th>Guru Pengampu</th><th>Mata Pelajaran</th><th>Kelas</th><th>Materi Pokok</th><th>Hadir/Absen</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${list.map((j, i) => `
+                            <tr>
+                                <td class="text-center">${i + 1}</td>
+                                <td>${j.date}</td>
+                                <td class="text-center">${j.teaching_hours}</td>
+                                <td>${getTeacherName(j.teacher_id)}</td>
+                                <td>${getSubjectName(j.subject_id)}</td>
+                                <td class="text-center">${getClassName(j.class_id)}</td>
+                                <td>${j.topic}</td>
+                                <td class="text-center">H:${j.present_count} / TH:${j.absent_count}</td>
+                            </tr>
+                        `).join('') || `<tr><td colspan="8" class="text-center py-4">Belum ada data jurnal.</td></tr>`}
+                    </tbody>
+                </table>
+            `;
+        }
+        if (type === 'jadwal') {
+            const list = state.db.schedules.filter(s => matchesActiveFilters(s));
+            return `
+                <h2 class="text-center font-extrabold text-sm uppercase mb-4 underline">LAPORAN JADWAL MENGAJAR GURU</h2>
+                <table class="w-full text-xs border-collapse pdf-table">
+                    <thead class="bg-slate-100">
+                        <tr>
+                            <th>No</th><th>Hari</th><th>Waktu</th><th>Guru Pengampu</th><th>Mata Pelajaran</th><th>Kelas</th><th>Ruangan</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${list.map((s, i) => `
+                            <tr>
+                                <td class="text-center">${i + 1}</td>
+                                <td>${s.day_of_week}</td>
+                                <td class="text-center">${s.start_time} - ${s.end_time}</td>
+                                <td>${getTeacherName(s.teacher_id)}</td>
+                                <td>${getSubjectName(s.subject_id)}</td>
+                                <td class="text-center">${getClassName(s.class_id)}</td>
+                                <td class="text-center">${s.room}</td>
+                            </tr>
+                        `).join('') || `<tr><td colspan="7" class="text-center py-4">Belum ada jadwal mengajar.</td></tr>`}
+                    </tbody>
+                </table>
+            `;
+        }
+        if (type === 'absensi') {
+            const list = state.db.attendances.filter(a => matchesActiveFilters(a));
+            return `
+                <h2 class="text-center font-extrabold text-sm uppercase mb-4 underline">REKAPITULASI PRESENSI KEHADIRAN SISWA</h2>
+                <table class="w-full text-xs border-collapse pdf-table">
+                    <thead class="bg-slate-100">
+                        <tr>
+                            <th>No</th><th>Tanggal</th><th>NISN</th><th>Nama Siswa</th><th>Kelas</th><th>Mata Pelajaran</th><th>Status</th><th>Keterangan</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${list.map((a, i) => `
+                            <tr>
+                                <td class="text-center">${i + 1}</td>
+                                <td>${a.date}</td>
+                                <td class="text-center">${getStudentNisn(a.student_id)}</td>
+                                <td>${getStudentName(a.student_id)}</td>
+                                <td class="text-center">${getClassName(a.class_id)}</td>
+                                <td>${getSubjectName(a.subject_id)}</td>
+                                <td class="text-center font-bold">${a.status}</td>
+                                <td>${a.remarks || '-'}</td>
+                            </tr>
+                        `).join('') || `<tr><td colspan="8" class="text-center py-4">Belum ada data presensi.</td></tr>`}
+                    </tbody>
+                </table>
+            `;
+        }
+        const list = state.db.grades.filter(g => matchesActiveFilters(g));
+        return `
+            <h2 class="text-center font-extrabold text-sm uppercase mb-4 underline">LAPORAN REKAPITULASI PENILAIAN SISWA</h2>
+            <table class="w-full text-xs border-collapse pdf-table">
+                <thead class="bg-slate-100">
+                    <tr>
+                        <th>No</th><th>NISN</th><th>Nama Siswa</th><th>Kelas</th><th>Mata Pelajaran</th><th>Rata Tugas</th><th>Rata UH</th><th>Rata TP</th><th>Nilai Akhir</th><th>Predikat</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${list.map((g, i) => `
+                        <tr>
+                            <td class="text-center">${i + 1}</td>
+                            <td class="text-center">${getStudentNisn(g.student_id)}</td>
+                            <td>${getStudentName(g.student_id)}</td>
+                            <td class="text-center">${getClassName(g.class_id)}</td>
+                            <td>${getSubjectName(g.subject_id)}</td>
+                            <td class="text-center">${Number(g.tugas_score || 0).toFixed(1)}</td>
+                            <td class="text-center">${Number(g.uh_score || 0).toFixed(1)}</td>
+                            <td class="text-center">${Number(g.tp_score || 0).toFixed(1)}</td>
+                            <td class="text-center font-bold">${Number(g.final_score || 0).toFixed(1)}</td>
+                            <td class="text-center font-bold">${g.predicate || '-'}</td>
+                        </tr>
+                    `).join('') || `<tr><td colspan="10" class="text-center py-4">Belum ada data penilaian siswa.</td></tr>`}
+                </tbody>
+            </table>
+        `;
+    }
+
+    function exportReportToPDF() {
+        const element = document.getElementById('pdf-print-area');
+        if (!element || !window.html2pdf) {
+            window.print();
+            return;
+        }
+        const opt = {
+            margin: 10,
+            filename: `Laporan_${state.filters.reportType}_${Date.now()}.pdf`,
+            image: { type: 'jpeg', quality: 0.98 },
+            html2canvas: { scale: 2, useCORS: true },
+            jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
+        };
+        window.html2pdf().set(opt).from(element).save();
+    }
+
+    // ============================================================================
+    // MENU 10: PENGATURAN APLIKASI & KOP PDF
+    // ============================================================================
+    function renderPengaturanMenu(container) {
+        const s = state.db.app_settings;
+        container.innerHTML = `
+            <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200/80 max-w-3xl">
+                <h3 class="text-sm font-extrabold text-slate-900 mb-4 flex items-center gap-2">
+                    <i class="fa-solid fa-sliders text-blue-600"></i>
+                    <span>Pengaturan Identitas Aplikasi, Sekolah &amp; Kop Cetakan PDF</span>
+                </h3>
+                <form onsubmit="window.app.saveSettings(event)" class="space-y-4">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1">Nama Aplikasi</label>
+                            <input type="text" id="set-app-name" required value="${s.app_name}" class="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1">Nama Sekolah</label>
+                            <input type="text" id="set-school-name" required value="${s.school_name}" class="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">Nama Instansi / Dinas Pendidikan (Baris Atas Kop PDF)</label>
+                        <input type="text" id="set-agency-name" required value="${s.agency_name}" class="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">Alamat Lengkap Kop Sekolah</label>
+                        <input type="text" id="set-kop-address" required value="${s.kop_address}" class="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs">
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1">Nama Kepala Sekolah</label>
+                            <input type="text" id="set-principal-name" required value="${s.principal_name}" class="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1">NIP Kepala Sekolah</label>
+                            <input type="text" id="set-principal-nip" required value="${s.principal_nip}" class="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-mono">
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1">URL Logo Daerah (Kiri Kop PDF)</label>
+                            <input type="url" id="set-region-logo" value="${s.region_logo_url}" class="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1">URL Logo Sekolah/Instansi (Kanan Kop PDF)</label>
+                            <input type="url" id="set-school-logo" value="${s.school_logo_url}" class="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs">
+                        </div>
+                    </div>
+                    <button type="submit" class="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow transition">
+                        <i class="fa-solid fa-floppy-disk mr-1.5"></i>Simpan Pengaturan
+                    </button>
+                </form>
+            </div>
+        `;
+    }
+
+    async function saveSettings(e) {
+        e.preventDefault();
+        const payload = {
+            id: 'set-1',
+            app_name: document.getElementById('set-app-name').value.trim(),
+            school_name: document.getElementById('set-school-name').value.trim(),
+            agency_name: document.getElementById('set-agency-name').value.trim(),
+            kop_address: document.getElementById('set-kop-address').value.trim(),
+            principal_name: document.getElementById('set-principal-name').value.trim(),
+            principal_nip: document.getElementById('set-principal-nip').value.trim(),
+            region_logo_url: document.getElementById('set-region-logo').value.trim(),
+            school_logo_url: document.getElementById('set-school-logo').value.trim()
+        };
+
+        state.db.app_settings = payload;
+        if (!IS_PREVIEW && supabase) {
+            await supabase.from('app_settings').upsert([payload]);
+        }
+
+        syncAllUI();
+        showToast('Pengaturan aplikasi & Kop PDF berhasil diperbarui!');
+    }
+
+    // ============================================================================
+    // EXPOSE GLOBAL API ON WINDOW.APP IMMEDIATELY
+    // ============================================================================
+    window.app = {
+        setLoginRole,
+        togglePasswordVisibility,
+        handleLogin,
+        quickLogin,
+        logout,
+        navigate,
+        applyGlobalFilters,
+        resetGlobalFilters,
+        handleGlobalSearch,
+        toggleAllGuruSubjects,
+        toggleAllGuruClasses,
+        saveTeacher,
+        editTeacher,
+        resetGuruForm,
+        deleteTeacher,
+        saveClass,
+        editClass,
+        resetClassForm,
+        deleteClass,
+        selectClassForStudentInput,
+        toggleStudentInputMode,
+        saveStudent,
+        fillSampleBulkStudents,
+        handleBulkCsvUpload,
+        saveBulkStudents,
+        deleteStudent,
+        saveSubject,
+        deleteSubject,
+        saveJournal,
+        deleteJournal,
+        saveSchedule,
+        deleteSchedule,
+        setAllAttendanceStatus,
+        saveBulkAttendance,
+        changeGradeClass,
+        changeGradeViewMode,
+        adjustMatrixColumnCount,
+        handleMatrixCellInput,
+        saveAllMatrixGrades,
+        setReportType,
+        exportReportToPDF,
+        saveSettings
+    };
+
+    window.addEventListener('DOMContentLoaded', async () => {
+        registerDynamicPWA();
+        await initSupabaseClient();
+        await autoSetupDatabase();
+        updateShellIdentity();
+    });
+</script>
+</body>
+</html>
